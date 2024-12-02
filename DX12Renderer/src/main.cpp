@@ -21,6 +21,11 @@
 #include <wrl.h>
 using namespace Microsoft::WRL;
 
+// STL Headers
+#include <algorithm>
+#include <cassert>
+#include <chrono>
+
 void main()
 {
 
