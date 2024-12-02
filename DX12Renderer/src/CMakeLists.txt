@@ -2,4 +2,5 @@ project(DX12Renderer)
 
 
 add_executable(DXRenderer
-"main.cpp")
+"main.cpp"
+"Includes/DirectXIncludes.h")
