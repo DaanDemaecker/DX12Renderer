@@ -3,7 +3,7 @@
 #include <shellapi.h> // For CommandLineToArgvW
 
 // The min/max macros conflict with like-named member functions.
-// Only use std::min and std::max defined in <algorith>
+// Only use std::min and std::max defined in <algorithm>
 #if defined(min)
 #undef min
 #endif
@@ -125,12 +125,12 @@ void RegisterWindowClass(HINSTANCE hInst, const wchar_t* windowClassName)
     windowClass.cbClsExtra = 0;
     windowClass.cbWndExtra = 0;
     windowClass.hInstance = hInst;
-    windowClass.hIcon = NULL;// ::LoadIcon(hInst, NULL);
-    windowClass.hCursor = ::LoadCursor(NULL, IDC_ARROW);
+    windowClass.hIcon = NULL; //LoadIcon(hInst, NULL);
+    windowClass.hCursor = LoadCursor(NULL, IDC_ARROW);
     windowClass.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
     windowClass.lpszMenuName = NULL;
     windowClass.lpszClassName = windowClassName;
-    windowClass.hIconSm = NULL; // ::LoadIcon(hInst, NULL);
+    windowClass.hIconSm = NULL; //LoadIcon(hInst, NULL);
 
     static ATOM atom = ::RegisterClassExW(&windowClass);
     assert(atom > 0);
@@ -478,6 +478,7 @@ void Render()
 
     commandAllocator->Reset();
     g_CommandList->Reset(commandAllocator.Get(), nullptr);
+
     // Clear the render target.
     {
         CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
@@ -485,29 +486,35 @@ void Render()
             D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
         g_CommandList->ResourceBarrier(1, &barrier);
-        FLOAT clearColor[] = { 0.8f, 0.1f, 0.5f, 1.0f };
+        
+        FLOAT clearColor[] = { 0.4f, 0.6f, 0.9f, 1.0f };
         CD3DX12_CPU_DESCRIPTOR_HANDLE rtv(g_RTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
             g_CurrentBackBufferIndex, g_RTVDescriptorSize);
 
         g_CommandList->ClearRenderTargetView(rtv, clearColor, 0, nullptr);
     }
+
     // Present
     {
         CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
             backBuffer.Get(),
             D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
         g_CommandList->ResourceBarrier(1, &barrier);
+
         ThrowIfFailed(g_CommandList->Close());
 
-        ID3D12CommandList* const commandLists[] = {
+        ID3D12CommandList* const commandLists[] =
+        {
             g_CommandList.Get()
         };
         g_CommandQueue->ExecuteCommandLists(_countof(commandLists), commandLists);
+
         UINT syncInterval = g_VSync ? 1 : 0;
         UINT presentFlags = g_TearingSupported && !g_VSync ? DXGI_PRESENT_ALLOW_TEARING : 0;
         ThrowIfFailed(g_SwapChain->Present(syncInterval, presentFlags));
 
         g_FrameFenceValues[g_CurrentBackBufferIndex] = Signal(g_CommandQueue, g_Fence, g_FenceValue);
+
         g_CurrentBackBufferIndex = g_SwapChain->GetCurrentBackBufferIndex();
 
         WaitForFenceValue(g_Fence, g_FrameFenceValues[g_CurrentBackBufferIndex], g_FenceEvent);
@@ -525,6 +532,7 @@ void Resize(uint32_t width, uint32_t height)
         // Flush the GPU queue to make sure the swap chain's back buffers
         // are not being referenced by an in-flight command list.
         Flush(g_CommandQueue, g_Fence, g_FenceValue, g_FenceEvent);
+
         for (int i = 0; i < g_NumFrames; ++i)
         {
             // Any references to the back buffers must be released
@@ -532,6 +540,7 @@ void Resize(uint32_t width, uint32_t height)
             g_BackBuffers[i].Reset();
             g_FrameFenceValues[i] = g_FrameFenceValues[g_CurrentBackBufferIndex];
         }
+
         DXGI_SWAP_CHAIN_DESC swapChainDesc = {};
         ThrowIfFailed(g_SwapChain->GetDesc(&swapChainDesc));
         ThrowIfFailed(g_SwapChain->ResizeBuffers(g_NumFrames, g_ClientWidth, g_ClientHeight,
@@ -548,50 +557,52 @@ void SetFullscreen(bool fullscreen)
     if (g_Fullscreen != fullscreen)
     {
         g_Fullscreen = fullscreen;
-
-        if (g_Fullscreen) // Switching to fullscreen.
+        
+        if (g_Fullscreen) // Switching to fullscreen
         {
-            // Store the current window dimensions so they can be restored 
+            // Store the current window dimensions so they can be restored
             // when switching out of fullscreen state.
-            ::GetWindowRect(g_hWnd, &g_WindowRect);
-            // Set the window style to a borderless window so the client area fills
-            // the entire screen.
-            UINT windowStyle = WS_OVERLAPPEDWINDOW & ~(WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX);
 
+            ::GetWindowRect(g_hWnd, &g_WindowRect);
+            
+            // Set the window style to a borderless window so the client area fills
+            // the entire screen
+            UINT windowStyle = WS_OVERLAPPEDWINDOW &
+                ~(WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX);
+            
             ::SetWindowLongW(g_hWnd, GWL_STYLE, windowStyle);
+
             // Query the name of the nearest display device for the window.
-           // This is required to set the fullscreen dimensions of the window
-           // when using a multi-monitor setup.
+            // This is required to set the fullscreen dimensions of the window
+            // when using a multi-monitor setup.
             HMONITOR hMonitor = ::MonitorFromWindow(g_hWnd, MONITOR_DEFAULTTONEAREST);
             MONITORINFOEX monitorInfo = {};
             monitorInfo.cbSize = sizeof(MONITORINFOEX);
+
             ::GetMonitorInfo(hMonitor, &monitorInfo);
+
             ::SetWindowPos(g_hWnd, HWND_TOP,
-                monitorInfo.rcMonitor.left,
-                monitorInfo.rcMonitor.top,
+                monitorInfo.rcMonitor.left, monitorInfo.rcMonitor.top,
                 monitorInfo.rcMonitor.right - monitorInfo.rcMonitor.left,
                 monitorInfo.rcMonitor.bottom - monitorInfo.rcMonitor.top,
                 SWP_FRAMECHANGED | SWP_NOACTIVATE);
 
             ::ShowWindow(g_hWnd, SW_MAXIMIZE);
         }
-        else
-        {
-            // Restore all the window decorators.
-            ::SetWindowLong(g_hWnd, GWL_STYLE, WS_OVERLAPPEDWINDOW);
+    }      
+    else // Restore all the window decorators
+    {
+        ::SetWindowLong(g_hWnd, GWL_STYLE, WS_OVERLAPPEDWINDOW);
 
-            ::SetWindowPos(g_hWnd, HWND_NOTOPMOST,
-                g_WindowRect.left,
-                g_WindowRect.top,
-                g_WindowRect.right - g_WindowRect.left,
-                g_WindowRect.bottom - g_WindowRect.top,
-                SWP_FRAMECHANGED | SWP_NOACTIVATE);
+        ::SetWindowPos(g_hWnd, HWND_NOTOPMOST,
+            g_WindowRect.left, g_WindowRect.top,
+            g_WindowRect.right - g_WindowRect.left,
+            g_WindowRect.bottom - g_WindowRect.top,
+            SWP_FRAMECHANGED | SWP_NOACTIVATE);
 
-            ::ShowWindow(g_hWnd, SW_NORMAL);
-        }
+        ::ShowWindow(g_hWnd, SW_NORMAL);
     }
 }
-
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -607,7 +618,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         case WM_KEYDOWN:
         {
             bool alt = (::GetAsyncKeyState(VK_MENU) & 0x8000) != 0;
-
             switch (wParam)
             {
             case 'V':
@@ -619,20 +629,22 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             case VK_RETURN:
                 if (alt)
                 {
-                SetFullscreen(!g_Fullscreen);
+                    SetFullscreen(!g_Fullscreen);
                 }
                 break;
             case VK_F11:
                 SetFullscreen(!g_Fullscreen);
                 break;
             }
+            break;
         }
-        break;
-        // The default window procedure will play a system notification sound 
-        // when pressing the Alt+Enter keyboard combination if this message is 
-        // not handled.
+          
+            // The default window procedure will play a system notification sound
+            // when pressing the Alt + Enter keyboard combination if this message is not handled
+
         case WM_SYSCHAR:
             break;
+       
         case WM_SIZE:
         {
             RECT clientRect = {};
@@ -643,34 +655,43 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
             Resize(width, height);
         }
-        break;
+            break;
+
         case WM_DESTROY:
             ::PostQuitMessage(0);
             break;
         default:
-            return ::DefWindowProcW(hwnd, message, wParam, lParam);
+            return ::DefWindowProc(hwnd, message, wParam, lParam);
         }
     }
     else
     {
-        return ::DefWindowProcW(hwnd, message, wParam, lParam);
+        return ::DefWindowProc(hwnd, message, wParam, lParam);
     }
 
     return 0;
 }
 
-int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdLine, int nCmdShow)
+int WINAPI wWinMain(
+    _In_ HINSTANCE hInstance,
+    _In_opt_ HINSTANCE hPrevInstance,
+    _In_ LPWSTR lpCmdLine,
+    _In_ int nCmdShow)
 {
     // Windows 10 Creators update adds Per Monitor V2 DPI awareness context.
-    // Using this awareness context allows the client area of the window 
-    // to achieve 100% scaling while still allowing non-client window content to 
+    // Usint this awareness context allows the client area of the window
+    // to achieve 100% scaling while still allowing non-client window content to
     // be rendered in a DPI sensitive fashion.
+
     SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 
     // Window class name. Used for registering / creating the window.
     const wchar_t* windowClassName = L"DX12WindowClass";
+
     ParseCommandLineArguments();
+
     EnableDebugLayer();
+
     g_TearingSupported = CheckTearingSupport();
 
     RegisterWindowClass(hInstance, windowClassName);
@@ -679,6 +700,7 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
 
     // Initialize the global window rect variable.
     ::GetWindowRect(g_hWnd, &g_WindowRect);
+
     ComPtr<IDXGIAdapter4> dxgiAdapter4 = GetAdapter(g_UseWarp);
 
     g_Device = CreateDevice(dxgiAdapter4);
@@ -694,19 +716,25 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
     g_RTVDescriptorSize = g_Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
     UpdateRenderTargetViews(g_Device, g_SwapChain, g_RTVDescriptorHeap);
+
     for (int i = 0; i < g_NumFrames; ++i)
     {
         g_CommandAllocators[i] = CreateCommandAllocator(g_Device, D3D12_COMMAND_LIST_TYPE_DIRECT);
+
     }
-    g_CommandList = CreateCommandList(g_Device,
-        g_CommandAllocators[g_CurrentBackBufferIndex], D3D12_COMMAND_LIST_TYPE_DIRECT);
+
+    g_CommandList = CreateCommandList(g_Device, g_CommandAllocators[g_CurrentBackBufferIndex], D3D12_COMMAND_LIST_TYPE_DIRECT);
+    
     g_Fence = CreateFence(g_Device);
+
     g_FenceEvent = CreateEventHandle();
+
     g_IsInitialized = true;
 
     ::ShowWindow(g_hWnd, SW_SHOW);
 
     MSG msg = {};
+
     while (msg.message != WM_QUIT)
     {
         if (::PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
@@ -715,7 +743,9 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
             ::DispatchMessage(&msg);
         }
     }
+
     // Make sure the command queue has finished all commands before closing.
+
     Flush(g_CommandQueue, g_Fence, g_FenceValue, g_FenceEvent);
 
     ::CloseHandle(g_FenceEvent);
