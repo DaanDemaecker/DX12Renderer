@@ -3,6 +3,7 @@
 
 // File includes
 #include "Helpers/Helpers.h"
+#include "Helpers/DirectXHelpers.h"
 
 // Standard library includes
 #include <shellapi.h> // For CommandLineToArgvW
@@ -25,16 +26,45 @@ DDM::Window::Window(WNDPROC pWndProc, HINSTANCE hInst,
 
     // Initialize the global window rect variable.
     ::GetWindowRect(m_hWnd, &m_WindowRect);
+
+    m_TearingSupported = CheckTearingSupport();
 }
 
 DDM::Window::~Window()
 {
 }
 
-void DDM::Window::SetClientDimensions(uint32_t width, uint32_t height)
+void DDM::Window::CreateSwapchain(ComPtr<ID3D12CommandQueue> commandQueue, ComPtr<ID3D12Device2> device)
 {
-    m_ClientWidth = width;
-    m_ClientHeight = height;
+    m_BackBuffers.resize(m_NumFrames);
+
+    m_SwapChain = CreateSwapChain(m_hWnd, commandQueue,
+        m_ClientWidth, m_ClientHeight, m_NumFrames);
+
+    m_CurrentBackBufferIndex = m_SwapChain->GetCurrentBackBufferIndex();
+
+    m_RTVDescriptorHeap = CreateDescriptorHeap(device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, m_NumFrames);
+    m_RTVDescriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+
+    UpdateRenderTargetViews(device, m_SwapChain, m_RTVDescriptorHeap);
+}
+
+void DDM::Window::SetCurrentBackBufferIndex()
+{
+    m_CurrentBackBufferIndex = m_SwapChain->GetCurrentBackBufferIndex();
+}
+
+CD3DX12_CPU_DESCRIPTOR_HANDLE DDM::Window::GetRTV()
+{
+    return CD3DX12_CPU_DESCRIPTOR_HANDLE(m_RTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
+        m_CurrentBackBufferIndex, m_RTVDescriptorSize);
+}
+
+void DDM::Window::PresentSwapchain()
+{
+    UINT syncInterval = m_VSync ? 1 : 0;
+    UINT presentFlags = m_TearingSupported && !m_VSync ? DXGI_PRESENT_ALLOW_TEARING : 0;
+    ThrowIfFailed(m_SwapChain->Present(syncInterval, presentFlags));
 }
 
 void DDM::Window::ParseCommandLineArgs()
@@ -117,8 +147,38 @@ HWND DDM::Window::CreateWindow(const wchar_t* windowClassName, HINSTANCE hInst,
     return hWnd;
 }
 
+void DDM::Window::Resize(uint32_t width, uint32_t height, ComPtr<ID3D12Device2> device,
+    ComPtr<ID3D12CommandQueue> commandQueue, ComPtr<ID3D12Fence> fence,
+    uint64_t* frameFenceValues, uint64_t& fenceValue, HANDLE fenceEvent)
+{
+    if (m_ClientWidth != width || m_ClientHeight != height)
+    {
+        // Don't allow 0 size swap chain back buffers.
+        m_ClientWidth = (std::max)(1u, width);
+        m_ClientHeight = (std::max)(1u, height);
 
+        // Flush the GPU queue to make sure the swap chain's back buffers
+        // are not being referenced by an in-flight command list.
+        Flush(commandQueue, fence, fenceValue, fenceEvent);
 
+        for (int i = 0; i < m_NumFrames; ++i)
+        {
+            // Any references to the back buffers must be released
+            // before the swap chain can be resized.
+            m_BackBuffers[i].Reset();
+            frameFenceValues[i] = frameFenceValues[m_CurrentBackBufferIndex];
+        }
+
+        DXGI_SWAP_CHAIN_DESC swapChainDesc = {};
+        ThrowIfFailed(m_SwapChain->GetDesc(&swapChainDesc));
+        ThrowIfFailed(m_SwapChain->ResizeBuffers(m_NumFrames, m_ClientWidth, m_ClientHeight,
+            swapChainDesc.BufferDesc.Format, swapChainDesc.Flags));
+
+        m_CurrentBackBufferIndex = m_SwapChain->GetCurrentBackBufferIndex();
+
+        UpdateRenderTargetViews(device, m_SwapChain, m_RTVDescriptorHeap);
+    }
+}
 
 void DDM::Window::ToggleFullscreen()
 {
@@ -176,3 +236,66 @@ void DDM::Window::SetFullscreen(bool fullscreen)
         }
     }
 }
+
+ComPtr<IDXGISwapChain4> DDM::Window::CreateSwapChain(HWND hWnd, ComPtr<ID3D12CommandQueue> commandQueue, uint32_t width, uint32_t height, uint32_t bufferCount)
+{
+    ComPtr<IDXGISwapChain4> dxgiSwapChain4;
+    ComPtr<IDXGIFactory4> dxgiFactory4;
+    UINT createFactoryFlags = 0;
+#if defined(_DEBUG)
+    createFactoryFlags = DXGI_CREATE_FACTORY_DEBUG;
+#endif
+
+    ThrowIfFailed(CreateDXGIFactory2(createFactoryFlags, IID_PPV_ARGS(&dxgiFactory4)));
+    DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
+    swapChainDesc.Width = width;
+    swapChainDesc.Height = height;
+    swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    swapChainDesc.Stereo = FALSE;
+    swapChainDesc.SampleDesc = { 1, 0 };
+    swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+    swapChainDesc.BufferCount = bufferCount;
+    swapChainDesc.Scaling = DXGI_SCALING_STRETCH;
+    swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+    swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
+    // It is recommended to always allow tearing if tearing support is available.
+    swapChainDesc.Flags = CheckTearingSupport() ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
+    ComPtr<IDXGISwapChain1> swapChain1;
+    ThrowIfFailed(dxgiFactory4->CreateSwapChainForHwnd(
+        commandQueue.Get(),
+        hWnd,
+        &swapChainDesc,
+        nullptr,
+        nullptr,
+        &swapChain1));
+
+    // Disable the Alt+Enter fullscreen toggle feature. Switching to fullscreen
+    // will be handled manually.
+    ThrowIfFailed(dxgiFactory4->MakeWindowAssociation(hWnd, DXGI_MWA_NO_ALT_ENTER));
+
+    ThrowIfFailed(swapChain1.As(&dxgiSwapChain4));
+
+    return dxgiSwapChain4;
+}
+
+void DDM::Window::UpdateRenderTargetViews(ComPtr<ID3D12Device2> device, ComPtr<IDXGISwapChain4> swapChain, ComPtr<ID3D12DescriptorHeap> descriptorHeap)
+{
+    auto rtvDescriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+
+    CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(descriptorHeap->GetCPUDescriptorHandleForHeapStart());
+
+    for (int i = 0; i < m_NumFrames; ++i)
+    {
+        ComPtr<ID3D12Resource> backBuffer;
+        ThrowIfFailed(swapChain->GetBuffer(i, IID_PPV_ARGS(&backBuffer)));
+
+        device->CreateRenderTargetView(backBuffer.Get(), nullptr, rtvHandle);
+
+        m_BackBuffers[i] = backBuffer;
+
+        rtvHandle.Offset(rtvDescriptorSize);
+    }
+}
+
+
+
