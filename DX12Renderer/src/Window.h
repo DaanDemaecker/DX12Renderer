@@ -20,6 +20,8 @@ using namespace Microsoft::WRL;
 
 namespace DDM
 {
+	class FenceObject;
+
 	class Window
 	{
 	public:
@@ -41,8 +43,7 @@ namespace DDM
 		HWND GetWindowHandle() { return m_hWnd; }
 
 		void Resize(uint32_t width, uint32_t height, ComPtr<ID3D12Device2> device,
-			ComPtr<ID3D12CommandQueue> commandQueue, ComPtr<ID3D12Fence> fence,
-			uint64_t* frameFenceValues, uint64_t& fenceValue, HANDLE fenceEvent);
+			ComPtr<ID3D12CommandQueue> commandQueue, FenceObject* pFenceObject, uint64_t* frameFenceValues);
 
 		void CreateSwapchain(ComPtr<ID3D12CommandQueue> commandQueue, ComPtr<ID3D12Device2> device);
 

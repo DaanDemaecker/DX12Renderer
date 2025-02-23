@@ -4,6 +4,7 @@
 // File includes
 #include "Helpers/Helpers.h"
 #include "Helpers/DirectXHelpers.h"
+#include "FenceObject.h"
 
 // Standard library includes
 #include <shellapi.h> // For CommandLineToArgvW
@@ -32,6 +33,37 @@ DDM::Window::Window(WNDPROC pWndProc, HINSTANCE hInst,
 
 DDM::Window::~Window()
 {
+}
+
+void DDM::Window::Resize(uint32_t width, uint32_t height, ComPtr<ID3D12Device2> device, ComPtr<ID3D12CommandQueue> commandQueue, FenceObject* pFenceObject, uint64_t* frameFenceValues)
+{
+    if (m_ClientWidth != width || m_ClientHeight != height)
+    {
+        // Don't allow 0 size swap chain back buffers.
+        m_ClientWidth = (std::max)(1u, width);
+        m_ClientHeight = (std::max)(1u, height);
+
+        // Flush the GPU queue to make sure the swap chain's back buffers
+        // are not being referenced by an in-flight command list.
+        pFenceObject->Flush(commandQueue);
+
+        for (int i = 0; i < m_NumFrames; ++i)
+        {
+            // Any references to the back buffers must be released
+            // before the swap chain can be resized.
+            m_BackBuffers[i].Reset();
+            frameFenceValues[i] = frameFenceValues[m_CurrentBackBufferIndex];
+        }
+
+        DXGI_SWAP_CHAIN_DESC swapChainDesc = {};
+        ThrowIfFailed(m_SwapChain->GetDesc(&swapChainDesc));
+        ThrowIfFailed(m_SwapChain->ResizeBuffers(m_NumFrames, m_ClientWidth, m_ClientHeight,
+            swapChainDesc.BufferDesc.Format, swapChainDesc.Flags));
+
+        m_CurrentBackBufferIndex = m_SwapChain->GetCurrentBackBufferIndex();
+
+        UpdateRenderTargetViews(device, m_SwapChain, m_RTVDescriptorHeap);
+    }
 }
 
 void DDM::Window::CreateSwapchain(ComPtr<ID3D12CommandQueue> commandQueue, ComPtr<ID3D12Device2> device)
@@ -145,39 +177,6 @@ HWND DDM::Window::CreateWindow(const wchar_t* windowClassName, HINSTANCE hInst,
 
 
     return hWnd;
-}
-
-void DDM::Window::Resize(uint32_t width, uint32_t height, ComPtr<ID3D12Device2> device,
-    ComPtr<ID3D12CommandQueue> commandQueue, ComPtr<ID3D12Fence> fence,
-    uint64_t* frameFenceValues, uint64_t& fenceValue, HANDLE fenceEvent)
-{
-    if (m_ClientWidth != width || m_ClientHeight != height)
-    {
-        // Don't allow 0 size swap chain back buffers.
-        m_ClientWidth = (std::max)(1u, width);
-        m_ClientHeight = (std::max)(1u, height);
-
-        // Flush the GPU queue to make sure the swap chain's back buffers
-        // are not being referenced by an in-flight command list.
-        Flush(commandQueue, fence, fenceValue, fenceEvent);
-
-        for (int i = 0; i < m_NumFrames; ++i)
-        {
-            // Any references to the back buffers must be released
-            // before the swap chain can be resized.
-            m_BackBuffers[i].Reset();
-            frameFenceValues[i] = frameFenceValues[m_CurrentBackBufferIndex];
-        }
-
-        DXGI_SWAP_CHAIN_DESC swapChainDesc = {};
-        ThrowIfFailed(m_SwapChain->GetDesc(&swapChainDesc));
-        ThrowIfFailed(m_SwapChain->ResizeBuffers(m_NumFrames, m_ClientWidth, m_ClientHeight,
-            swapChainDesc.BufferDesc.Format, swapChainDesc.Flags));
-
-        m_CurrentBackBufferIndex = m_SwapChain->GetCurrentBackBufferIndex();
-
-        UpdateRenderTargetViews(device, m_SwapChain, m_RTVDescriptorHeap);
-    }
 }
 
 void DDM::Window::ToggleFullscreen()

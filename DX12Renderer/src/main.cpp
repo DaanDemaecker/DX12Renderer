@@ -14,14 +14,19 @@ using namespace Microsoft::WRL;
 // DirectX12 include
 #include "Includes/DirectXIncludes.h"
 
-// Application include
+// File includes
 #include "Application.h"
 #include "Window.h"
+#include "FenceObject.h"
+
+const uint8_t g_NumFrames = 3;
 
 DDM::Window* g_pWindow;
 
+std::unique_ptr<DDM::FenceObject> g_pFenceObject;
+uint64_t g_FrameFenceValues[g_NumFrames];
+
 // Number of swap chain back buffers
-const uint8_t g_NumFrames = 3;
 // Use WARP adapter
 bool g_UseWarp = false;
 
@@ -34,12 +39,6 @@ ComPtr<ID3D12Device2> g_Device;
 ComPtr<ID3D12CommandQueue> g_CommandQueue;
 ComPtr<ID3D12GraphicsCommandList> g_CommandList;
 ComPtr<ID3D12CommandAllocator> g_CommandAllocators[g_NumFrames];
-
-// Synchronization objects
-ComPtr<ID3D12Fence> g_Fence;
-uint64_t g_FenceValue = 0;
-uint64_t g_FrameFenceValues[g_NumFrames] = {};
-HANDLE g_FenceEvent;
 
 // Window callback function.
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
@@ -231,11 +230,11 @@ void Render()
         
         g_pWindow->PresentSwapchain();
 
-        g_FrameFenceValues[g_pWindow->GetCurrentBackBufferIndex()] = Signal(g_CommandQueue, g_Fence, g_FenceValue);
+        g_FrameFenceValues[g_pWindow->GetCurrentBackBufferIndex()] = g_pFenceObject->Signal(g_CommandQueue);
 
         g_pWindow->SetCurrentBackBufferIndex();
 
-        WaitForFenceValue(g_Fence, g_FrameFenceValues[g_pWindow->GetCurrentBackBufferIndex()], g_FenceEvent);
+        g_pFenceObject->WaitForFenceValue(g_FrameFenceValues[g_pWindow->GetCurrentBackBufferIndex()]);
     }
 }
 
@@ -288,7 +287,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             int width = clientRect.right - clientRect.left;
             int height = clientRect.bottom - clientRect.top;
 
-            g_pWindow->Resize(width, height, g_Device, g_CommandQueue, g_Fence, g_FrameFenceValues, g_FenceValue, g_FenceEvent);
+            g_pWindow->Resize(width, height, g_Device, g_CommandQueue, g_pFenceObject.get(), g_FrameFenceValues);
         }
             break;
 
@@ -347,9 +346,8 @@ int CALLBACK WINAPI wWinMain(
 
     g_CommandList = CreateCommandList(g_Device, g_CommandAllocators[g_pWindow->GetCurrentBackBufferIndex()], D3D12_COMMAND_LIST_TYPE_DIRECT);
     
-    g_Fence = CreateFence(g_Device);
+    g_pFenceObject = std::make_unique<DDM::FenceObject>(g_Device, g_NumFrames);
 
-    g_FenceEvent = CreateEventHandle();
 
     g_IsInitialized = true;
 
@@ -367,10 +365,7 @@ int CALLBACK WINAPI wWinMain(
     }
 
     // Make sure the command queue has finished all commands before closing.
-
-    Flush(g_CommandQueue, g_Fence, g_FenceValue, g_FenceEvent);
-
-    ::CloseHandle(g_FenceEvent);
+    g_pFenceObject->CloseHandle(g_CommandQueue);
 
     return 0;
 }
