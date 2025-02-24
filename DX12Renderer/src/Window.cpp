@@ -35,7 +35,8 @@ DDM::Window::~Window()
 {
 }
 
-void DDM::Window::Resize(uint32_t width, uint32_t height, ComPtr<ID3D12Device2> device, ComPtr<ID3D12CommandQueue> commandQueue, FenceObject* pFenceObject, uint64_t* frameFenceValues)
+void DDM::Window::Resize(uint32_t width, uint32_t height, ComPtr<ID3D12Device2> device, ComPtr<ID3D12CommandQueue> commandQueue,
+    FenceObject* pFenceObject, std::vector<uint64_t>& frameFenceValues)
 {
     if (m_ClientWidth != width || m_ClientHeight != height)
     {
@@ -97,6 +98,11 @@ void DDM::Window::PresentSwapchain()
     UINT syncInterval = m_VSync ? 1 : 0;
     UINT presentFlags = m_TearingSupported && !m_VSync ? DXGI_PRESENT_ALLOW_TEARING : 0;
     ThrowIfFailed(m_SwapChain->Present(syncInterval, presentFlags));
+}
+
+void DDM::Window::ShowWindow()
+{
+    ::ShowWindow(m_hWnd, SW_SHOW);
 }
 
 void DDM::Window::ParseCommandLineArgs()

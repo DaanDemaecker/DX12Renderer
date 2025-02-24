@@ -43,7 +43,7 @@ namespace DDM
 		HWND GetWindowHandle() { return m_hWnd; }
 
 		void Resize(uint32_t width, uint32_t height, ComPtr<ID3D12Device2> device,
-			ComPtr<ID3D12CommandQueue> commandQueue, FenceObject* pFenceObject, uint64_t* frameFenceValues);
+			ComPtr<ID3D12CommandQueue> commandQueue, FenceObject* pFenceObject, std::vector<uint64_t>& frameFenceValues);
 
 		void CreateSwapchain(ComPtr<ID3D12CommandQueue> commandQueue, ComPtr<ID3D12Device2> device);
 
@@ -58,6 +58,8 @@ namespace DDM
 		void PresentSwapchain();
 
 		void ToggleVsync() { m_VSync = !m_VSync; }
+
+		void ShowWindow();
 	private:
 		// Window Handle
 		HWND m_hWnd;
