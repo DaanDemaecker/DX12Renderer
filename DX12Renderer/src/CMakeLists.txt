@@ -5,7 +5,7 @@ set(SRC_FILES
 	"Window.cpp"
 	"Application.cpp"
 	"FenceObject.cpp"
-)
+ "CommandQueue.cpp")
 
 add_executable(DXRenderer ${SRC_FILES})
 
