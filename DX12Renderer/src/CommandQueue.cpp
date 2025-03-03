@@ -137,3 +137,8 @@ void DDM::CommandQueue::Flush()
 	uint64_t fenceValueForSignal = Signal();
 	WaitForFenceValue(fenceValueForSignal);
 }
+
+Microsoft::WRL::ComPtr<ID3D12CommandQueue> DDM::CommandQueue::GetD3D12CommandQueue() const
+{
+	return m_d3d12CommandQueue;
+}

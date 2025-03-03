@@ -5,24 +5,22 @@
 #include "Helpers/Helpers.h"
 #include "Helpers/DirectXHelpers.h"
 #include "FenceObject.h"
+#include "CommandQueue.h"
+#include "Application.h"
 
 // Standard library includes
 #include <shellapi.h> // For CommandLineToArgvW
 #include <cassert>
 #include <algorithm>
 
-DDM::Window::Window(WNDPROC pWndProc, HINSTANCE hInst,
-    const wchar_t* windowTitle, uint8_t numFrames) : m_NumFrames{ numFrames }
+
+DDM::Window::Window(const std::wstring& windowClassName, HINSTANCE hInst, const std::wstring& windowTitle, uint8_t numFrames,
+    int clientWidth, int clientHeight, bool vsync)
+    : m_NumFrames{ numFrames }, m_ClientWidth{clientWidth}, m_ClientHeight{clientHeight}, m_VSync{vsync}
 {
-
-    // Window class name. Used for registering / creating the window.
-    const wchar_t* windowClassName = L"DX12WindowClass";
-
     ParseCommandLineArgs();
 
-    RegisterWindowClass(pWndProc, hInst, windowClassName);
-
-    m_hWnd = CreateWindow(windowClassName, hInst, windowTitle, m_ClientWidth, m_ClientHeight);
+    m_hWnd = CreateWindow(windowClassName, hInst, windowTitle.c_str(), m_ClientWidth, m_ClientHeight);
 
 
     // Initialize the global window rect variable.
@@ -33,6 +31,7 @@ DDM::Window::Window(WNDPROC pWndProc, HINSTANCE hInst,
 
 DDM::Window::~Window()
 {
+    Application::Get().GetCommandQueue()->Flush();
 }
 
 void DDM::Window::Resize(uint32_t width, uint32_t height, ComPtr<ID3D12Device2> device, ComPtr<ID3D12CommandQueue> commandQueue,
@@ -47,6 +46,8 @@ void DDM::Window::Resize(uint32_t width, uint32_t height, ComPtr<ID3D12Device2> 
         // Flush the GPU queue to make sure the swap chain's back buffers
         // are not being referenced by an in-flight command list.
         pFenceObject->Flush(commandQueue);
+
+        
 
         for (int i = 0; i < m_NumFrames; ++i)
         {
@@ -105,6 +106,47 @@ void DDM::Window::ShowWindow()
     ::ShowWindow(m_hWnd, SW_SHOW);
 }
 
+void DDM::Window::OnRender()
+{
+    auto commandQueue = DDM::Application::Get().GetCommandQueue();
+
+
+    auto commandList = commandQueue->GetCommandList();
+    auto& backBuffer = GetCurrentBackBuffer();
+
+    // Clear the render target.
+    {
+        CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+            backBuffer.Get(),
+            D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+
+        commandList->ResourceBarrier(1, &barrier);
+
+        FLOAT clearColor[] = { 0.4f, 0.6f, 0.9f, 1.0f };
+        CD3DX12_CPU_DESCRIPTOR_HANDLE rtv = GetRTV();
+
+        commandList->ClearRenderTargetView(rtv, clearColor, 0, nullptr);
+    }
+
+    // Present
+    {
+        CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+            backBuffer.Get(),
+            D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+        commandList->ResourceBarrier(1, &barrier);
+
+        auto fenceValue = commandQueue->ExecuteCommandList(commandList);
+
+
+        PresentSwapchain();
+
+
+        SetCurrentBackBufferIndex();
+
+        commandQueue->WaitForFenceValue(fenceValue);
+    }
+}
+
 void DDM::Window::ParseCommandLineArgs()
 {
     int argc;
@@ -126,29 +168,7 @@ void DDM::Window::ParseCommandLineArgs()
     ::LocalFree(argv);
 }
 
-void DDM::Window::RegisterWindowClass(WNDPROC pWndProc, HINSTANCE hInst, const wchar_t* windowClassName)
-{
-    // Register a window class for creating our render window with.
-    WNDCLASSEXW windowClass = {};
-
-    windowClass.cbSize = sizeof(WNDCLASSEX);
-    windowClass.style = CS_HREDRAW | CS_VREDRAW;
-    windowClass.lpfnWndProc = pWndProc;
-    windowClass.cbClsExtra = 0;
-    windowClass.cbWndExtra = 0;
-    windowClass.hInstance = hInst;
-    windowClass.hIcon = NULL; //LoadIcon(hInst, NULL);
-    windowClass.hCursor = LoadCursor(NULL, IDC_ARROW);
-    windowClass.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
-    windowClass.lpszMenuName = NULL;
-    windowClass.lpszClassName = windowClassName;
-    windowClass.hIconSm = NULL; //LoadIcon(hInst, NULL);
-
-    static ATOM atom = ::RegisterClassExW(&windowClass);
-    assert(atom > 0);
-}
-
-HWND DDM::Window::CreateWindow(const wchar_t* windowClassName, HINSTANCE hInst,
+HWND DDM::Window::CreateWindow(const std::wstring& windowClassName, HINSTANCE hInst,
     const wchar_t* windowTitle, uint32_t width, uint32_t height)
 {
     int screenWidth = ::GetSystemMetrics(SM_CXSCREEN);
@@ -166,7 +186,7 @@ HWND DDM::Window::CreateWindow(const wchar_t* windowClassName, HINSTANCE hInst,
 
     HWND hWnd = ::CreateWindowExW(
         NULL,
-        windowClassName,
+        windowClassName.c_str(),
         windowTitle,
         WS_OVERLAPPEDWINDOW,
         windowX,

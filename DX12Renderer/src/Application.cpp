@@ -2,6 +2,7 @@
 
 // Header include
 #include "Application.h"
+#include "CommandQueue.h"
 
 // File includes
 #include "Window.h" // For DDM::Window class
@@ -9,20 +10,29 @@
 #include "Helpers/Helpers.h"
 #include "Helpers/DirectXHelpers.h"
 
+static std::shared_ptr<DDM::Window> gs_Window;
+
+static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
+
 
 DDM::Application::Application()
 {
+
 }
 
 DDM::Application::~Application()
 {
     // Make sure the command queue has finished all commands before closing.
-    g_pFenceObject->CloseHandle(g_CommandQueue);
+    //g_pFenceObject->CloseHandle(g_CommandQueue);
 }
 
-bool DDM::Application::Initialize(WNDPROC pWndProc, HINSTANCE hInst, const wchar_t* windowTitle, uint8_t numFrames)
+bool DDM::Application::Initialize(HINSTANCE hInst, uint8_t numFrames)
 {
     g_NumFrames = numFrames;
+    
+    m_Instance = hInst;
+
+    RegisterWindowClass(hInst, m_WindowClassName);
     // Windows 10 Creators update adds Per Monitor V2 DPI awareness context.
     // Usint this awareness context allows the client area of the window
     // to achieve 100% scaling while still allowing non-client window content to
@@ -36,26 +46,11 @@ bool DDM::Application::Initialize(WNDPROC pWndProc, HINSTANCE hInst, const wchar
     EnableDebugLayer();
 
     g_Device = CreateDevice(GetAdapter(m_UseWarp));
-
-    m_pWindow = std::make_unique<DDM::Window>(pWndProc, hInst, windowTitle, numFrames);
-
-    g_CommandQueue = CreateCommandQueue(g_Device, D3D12_COMMAND_LIST_TYPE_DIRECT);
-
-    m_pWindow->CreateSwapchain(g_CommandQueue, g_Device);
-
-    g_CommandAllocators.resize(g_NumFrames);
-    for (int i = 0; i < g_NumFrames; ++i)
-    {
-        g_CommandAllocators[i] = CreateCommandAllocator(g_Device, D3D12_COMMAND_LIST_TYPE_DIRECT);
-
-    }
-
-    g_CommandList = CreateCommandList(g_Device, g_CommandAllocators[m_pWindow->GetCurrentBackBufferIndex()], D3D12_COMMAND_LIST_TYPE_DIRECT);
-
+    
+    m_pCommandQueue = std::make_unique<DDM::CommandQueue>(g_Device, D3D12_COMMAND_LIST_TYPE_DIRECT);
+    
     g_pFenceObject = std::make_unique<DDM::FenceObject>(g_Device, g_NumFrames);
     g_FrameFenceValues.resize(g_NumFrames);
-
-    m_pWindow->ShowWindow();
 
     return true;
 }
@@ -72,6 +67,8 @@ void DDM::Application::Run()
             ::DispatchMessage(&msg);
         }
     }
+
+    DestroyWindow();
 }
 
 void DDM::Application::ParseCommandLineArguments()
@@ -123,8 +120,8 @@ void DDM::Application::Update()
 
 void DDM::Application::Render()
 {
-    auto& commandAllocator = g_CommandAllocators[m_pWindow->GetCurrentBackBufferIndex()];
-    auto& backBuffer = m_pWindow->GetCurrentBackBuffer();
+    auto& commandAllocator = g_CommandAllocators[gs_Window->GetCurrentBackBufferIndex()];
+    auto& backBuffer = gs_Window->GetCurrentBackBuffer();
 
     commandAllocator->Reset();
     g_CommandList->Reset(commandAllocator.Get(), nullptr);
@@ -138,7 +135,7 @@ void DDM::Application::Render()
         g_CommandList->ResourceBarrier(1, &barrier);
 
         FLOAT clearColor[] = { 0.4f, 0.6f, 0.9f, 1.0f };
-        CD3DX12_CPU_DESCRIPTOR_HANDLE rtv = m_pWindow->GetRTV();
+        CD3DX12_CPU_DESCRIPTOR_HANDLE rtv = gs_Window->GetRTV();
 
         g_CommandList->ClearRenderTargetView(rtv, clearColor, 0, nullptr);
     }
@@ -160,22 +157,66 @@ void DDM::Application::Render()
         g_CommandQueue->ExecuteCommandLists(_countof(commandLists), commandLists);
 
 
-        m_pWindow->PresentSwapchain();
+        gs_Window->PresentSwapchain();
 
-        g_FrameFenceValues[m_pWindow->GetCurrentBackBufferIndex()] = g_pFenceObject->Signal(g_CommandQueue);
+        g_FrameFenceValues[gs_Window->GetCurrentBackBufferIndex()] = g_pFenceObject->Signal(g_CommandQueue);
 
-        m_pWindow->SetCurrentBackBufferIndex();
+        gs_Window->SetCurrentBackBufferIndex();
 
-        g_pFenceObject->WaitForFenceValue(g_FrameFenceValues[m_pWindow->GetCurrentBackBufferIndex()]);
+        g_pFenceObject->WaitForFenceValue(g_FrameFenceValues[gs_Window->GetCurrentBackBufferIndex()]);
     }
 }
 
-LRESULT DDM::Application::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
+void DDM::Application::RegisterWindowClass(HINSTANCE hInst, const std::wstring& windowClassName)
+{
+    // Register a window class for creating our render window with.
+    WNDCLASSEXW windowClass = {};
+
+    windowClass.cbSize = sizeof(WNDCLASSEX);
+    windowClass.style = CS_HREDRAW | CS_VREDRAW;
+    windowClass.lpfnWndProc = &WndProc;
+    windowClass.cbClsExtra = 0;
+    windowClass.cbWndExtra = 0;
+    windowClass.hInstance = hInst;
+    windowClass.hIcon = NULL; //LoadIcon(hInst, NULL);
+    windowClass.hCursor = LoadCursor(NULL, IDC_ARROW);
+    windowClass.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+    windowClass.lpszMenuName = NULL;
+    windowClass.lpszClassName = windowClassName.c_str();
+    windowClass.hIconSm = NULL; //LoadIcon(hInst, NULL);
+
+    static ATOM atom = ::RegisterClassExW(&windowClass);
+    assert(atom > 0);
+}
+
+void DDM::Application::DestroyWindow()
+{
+    gs_Window = nullptr;
+}
+
+std::shared_ptr<DDM::Window> DDM::Application::CreateRenderWindow(const std::wstring& windowName, int clientWidth, int clientHeight, bool vsync)
+{
+    gs_Window = std::make_shared<DDM::Window>(m_WindowClassName, m_Instance, windowName, g_NumFrames, clientWidth, clientHeight, vsync);
+
+    gs_Window->CreateSwapchain(Application::Get().GetCommandQueue()->GetD3D12CommandQueue(), g_Device);
+
+    gs_Window->ShowWindow();
+
+    return gs_Window;
+}
+
+DDM::CommandQueue* DDM::Application::GetCommandQueue()
+{
+    return m_pCommandQueue.get();
+}
+
+static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message)
     {
     case WM_PAINT:
-        GameLoop();
+        //GameLoop();
+        gs_Window->OnRender();
         break;
     case WM_SYSKEYDOWN:
     case WM_KEYDOWN:
@@ -184,7 +225,7 @@ LRESULT DDM::Application::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM
         switch (wParam)
         {
         case 'V':
-            m_pWindow->ToggleVsync();
+            gs_Window->ToggleVsync();
             break;
         case VK_ESCAPE:
             ::PostQuitMessage(0);
@@ -192,11 +233,11 @@ LRESULT DDM::Application::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM
         case VK_RETURN:
             if (alt)
             {
-                m_pWindow->ToggleFullscreen();
+                gs_Window->ToggleFullscreen();
             }
             break;
         case VK_F11:
-            m_pWindow->ToggleFullscreen();
+            gs_Window->ToggleFullscreen();
             break;
         }
         break;
@@ -212,12 +253,12 @@ LRESULT DDM::Application::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM
     {
         RECT clientRect = {};
 
-        ::GetClientRect(m_pWindow->GetWindowHandle(), &clientRect);
+        ::GetClientRect(gs_Window->GetWindowHandle(), &clientRect);
 
         int width = clientRect.right - clientRect.left;
         int height = clientRect.bottom - clientRect.top;
 
-        m_pWindow->Resize(width, height, g_Device, g_CommandQueue, g_pFenceObject.get(), g_FrameFenceValues);
+        //gs_Windows->Resize(width, height, g_Device, g_CommandQueue, g_pFenceObject.get(), g_FrameFenceValues);
     }
     break;
 

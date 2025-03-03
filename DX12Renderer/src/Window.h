@@ -26,8 +26,9 @@ namespace DDM
 	{
 	public:
 		Window() = delete;
-		Window(WNDPROC pWndProc, HINSTANCE hInst,
-			const wchar_t* windowTitle, uint8_t numFrames);
+		Window(const std::wstring& windowClassName, HINSTANCE hInst,
+			const std::wstring& windowTitle, uint8_t numFrames,
+			int clientWidth, int clientHeight, bool vsync);
 		
 		~Window();
 
@@ -60,7 +61,14 @@ namespace DDM
 		void ToggleVsync() { m_VSync = !m_VSync; }
 
 		void ShowWindow();
+
+		void OnRender();
+
+
 	private:
+		// The Window procedure needs to call protected methods of this class.
+		friend LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
+
 		// Window Handle
 		HWND m_hWnd;
 		// Window rectangle  (used to toggle fullscreen state)
@@ -70,8 +78,8 @@ namespace DDM
 		uint8_t m_NumFrames;
 
 		// Client dimensions
-		uint32_t m_ClientWidth = 1280;
-		uint32_t m_ClientHeight = 720;
+		int m_ClientWidth;
+		int m_ClientHeight;
 
 		// By default, enable V-Sync.
 		// Can be toggled with the V key.
@@ -93,7 +101,7 @@ namespace DDM
 
 		void RegisterWindowClass(WNDPROC pWndProc, HINSTANCE hInst, const wchar_t* windowClassName);
 
-		HWND CreateWindow(const wchar_t* windowClassName, HINSTANCE hInst,
+		HWND CreateWindow(const std::wstring& windowClassName, HINSTANCE hInst,
 			const wchar_t* windowTitle, uint32_t width, uint32_t height);
 
 		ComPtr<IDXGISwapChain4> CreateSwapChain(HWND hWnd,

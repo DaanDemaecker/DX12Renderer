@@ -20,25 +20,6 @@ using namespace Microsoft::WRL;
 // Number of swap chain back buffers
 constexpr uint8_t g_NumFrames = 3;
 
-std::unique_ptr<DDM::Application> g_pApplication;
-
-// Set to true once the DX12 objects have been initialized
-bool g_IsInitialized = false;
-
-LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
-{
-    if (g_IsInitialized)
-    {
-        DDM::Application::Get().WndProc(hwnd, message, wParam, lParam);
-    }
-    else
-    {
-        return ::DefWindowProc(hwnd, message, wParam, lParam);
-    }
-
-    return 0;
-}
-
 
 int CALLBACK WINAPI wWinMain(
     _In_ HINSTANCE hInstance,
@@ -46,7 +27,9 @@ int CALLBACK WINAPI wWinMain(
     _In_ LPWSTR lpCmdLine,
     _In_ int nShowCmd)
 { 
-    g_IsInitialized = DDM::Application::Get().Initialize(&WndProc, hInstance, L"Learning DirectX 12", g_NumFrames);
+    DDM::Application::Get().Initialize(hInstance, g_NumFrames);
+
+    DDM::Application::Get().CreateRenderWindow(L"DirectX12 Tutorial", 1280, 720, true);
     
     DDM::Application::Get().Run();
 
