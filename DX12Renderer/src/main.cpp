@@ -48,7 +48,7 @@ int CALLBACK WINAPI wWinMain(
 { 
     g_IsInitialized = DDM::Application::Get().Initialize(&WndProc, hInstance, L"Learning DirectX 12", g_NumFrames);
     
-    g_pApplication->Run();
+    DDM::Application::Get().Run();
 
     return 0;
 }
