@@ -5,6 +5,7 @@
 
 // File includes
 #include "Includes/DirectXIncludes.h"
+#include "Singleton.h"
 
 // Standard library includes
 #include <memory> // For std::unique_ptr
@@ -19,7 +20,7 @@ namespace DDM
 	class Window;
 	class FenceObject;
 
-	class Application final
+	class Application final : public Singleton<Application>
 	{
 	public:
 		Application();

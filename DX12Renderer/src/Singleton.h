@@ -4,8 +4,6 @@
 #ifndef SingletonIncluded
 #define SingletonIncluded
 
-
-
 namespace DDM
 {
 	template <typename T>

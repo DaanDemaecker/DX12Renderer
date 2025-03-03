@@ -29,7 +29,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     if (g_IsInitialized)
     {
-        g_pApplication->WndProc(hwnd, message, wParam, lParam);
+        DDM::Application::Get().WndProc(hwnd, message, wParam, lParam);
     }
     else
     {
@@ -46,9 +46,7 @@ int CALLBACK WINAPI wWinMain(
     _In_ LPWSTR lpCmdLine,
     _In_ int nShowCmd)
 { 
-    g_pApplication = std::make_unique<DDM::Application>();
-
-    g_IsInitialized = g_pApplication->Initialize(&WndProc, hInstance, L"Learning DirectX 12", g_NumFrames);
+    g_IsInitialized = DDM::Application::Get().Initialize(&WndProc, hInstance, L"Learning DirectX 12", g_NumFrames);
     
     g_pApplication->Run();
 
