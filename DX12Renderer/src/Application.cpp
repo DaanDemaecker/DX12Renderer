@@ -10,11 +10,19 @@
 #include "Helpers/DirectXHelpers.h"
 
 
-
-DDM::Application::Application(WNDPROC pWndProc, HINSTANCE hInst,
-	const wchar_t* windowTitle, uint8_t numFrames):
-    g_NumFrames{numFrames}
+DDM::Application::Application()
 {
+}
+
+DDM::Application::~Application()
+{
+    // Make sure the command queue has finished all commands before closing.
+    g_pFenceObject->CloseHandle(g_CommandQueue);
+}
+
+bool DDM::Application::Initialize(WNDPROC pWndProc, HINSTANCE hInst, const wchar_t* windowTitle, uint8_t numFrames)
+{
+    g_NumFrames = numFrames;
     // Windows 10 Creators update adds Per Monitor V2 DPI awareness context.
     // Usint this awareness context allows the client area of the window
     // to achieve 100% scaling while still allowing non-client window content to
@@ -29,7 +37,7 @@ DDM::Application::Application(WNDPROC pWndProc, HINSTANCE hInst,
 
     g_Device = CreateDevice(GetAdapter(m_UseWarp));
 
-	m_pWindow = std::make_unique<DDM::Window>(pWndProc, hInst, windowTitle, numFrames);
+    m_pWindow = std::make_unique<DDM::Window>(pWndProc, hInst, windowTitle, numFrames);
 
     g_CommandQueue = CreateCommandQueue(g_Device, D3D12_COMMAND_LIST_TYPE_DIRECT);
 
@@ -48,12 +56,8 @@ DDM::Application::Application(WNDPROC pWndProc, HINSTANCE hInst,
     g_FrameFenceValues.resize(g_NumFrames);
 
     m_pWindow->ShowWindow();
-}
 
-DDM::Application::~Application()
-{
-    // Make sure the command queue has finished all commands before closing.
-    g_pFenceObject->CloseHandle(g_CommandQueue);
+    return true;
 }
 
 void DDM::Application::Run()

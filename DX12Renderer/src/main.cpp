@@ -46,9 +46,9 @@ int CALLBACK WINAPI wWinMain(
     _In_ LPWSTR lpCmdLine,
     _In_ int nShowCmd)
 { 
-    g_pApplication = std::make_unique<DDM::Application>(&WndProc, hInstance, L"Learning DirectX 12", g_NumFrames);
+    g_pApplication = std::make_unique<DDM::Application>();
 
-    g_IsInitialized = true;
+    g_IsInitialized = g_pApplication->Initialize(&WndProc, hInstance, L"Learning DirectX 12", g_NumFrames);
     
     g_pApplication->Run();
 

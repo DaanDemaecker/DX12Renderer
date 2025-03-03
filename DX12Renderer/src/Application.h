@@ -22,7 +22,7 @@ namespace DDM
 	class Application final
 	{
 	public:
-		Application(WNDPROC pWndProc, HINSTANCE hInst, const wchar_t* windowTitle, uint8_t numFrames);
+		Application();
 
 		~Application();
 
@@ -31,6 +31,8 @@ namespace DDM
 
 		Application& operator=(Application& other) = delete;
 		Application& operator=(Application&& other) = delete;
+		
+		bool Initialize(WNDPROC pWndProc, HINSTANCE hInst, const wchar_t* windowTitle, uint8_t numFrames);
 
 		void Run();
 
@@ -43,7 +45,7 @@ namespace DDM
 
 		std::unique_ptr<Window> m_pWindow{};
 
-		const uint8_t g_NumFrames;
+		uint8_t g_NumFrames;
 
 		// DirectX 12 Objects
 		ComPtr<ID3D12Device2> g_Device;
