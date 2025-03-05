@@ -66,12 +66,6 @@ namespace DDM
 
 		void ParseCommandLineArguments();
 
-		void GameLoop();
-
-		void Update();
-
-		void Render();
-
 		void RegisterWindowClass(HINSTANCE hInst, const std::wstring& windowClassName);
 
 		void DestroyWindow();

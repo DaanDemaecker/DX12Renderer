@@ -106,7 +106,33 @@ void DDM::Window::ShowWindow()
     ::ShowWindow(m_hWnd, SW_SHOW);
 }
 
-void DDM::Window::OnRender()
+void DDM::Window::OnUpdate(UpdateEventArgs& e)
+{
+    static uint64_t frameCounter = 0;
+    static double elapsedSeconds = 0.0;
+    static std::chrono::high_resolution_clock clock;
+    static auto t0 = clock.now();
+
+    frameCounter++;
+    auto t1 = clock.now();
+    auto deltaTime = t1 - t0;
+    t0 = t1;
+    elapsedSeconds += deltaTime.count() * 1e-9;
+    if (elapsedSeconds > 1.0)
+    {
+        char buffer[500];
+        auto fps = frameCounter / elapsedSeconds;
+        sprintf_s(buffer, 500, "FPS: %f\n", fps);
+        OutputDebugString(buffer);
+
+        frameCounter = 0;
+        elapsedSeconds = 0.0;
+    }
+
+    e.ElapsedTime = elapsedSeconds;
+}
+
+void DDM::Window::OnRender(RenderEventArgs& e)
 {
     auto commandQueue = DDM::Application::Get().GetCommandQueue();
 
@@ -128,23 +154,7 @@ void DDM::Window::OnRender()
         commandList->ClearRenderTargetView(rtv, clearColor, 0, nullptr);
     }
 
-    // Present
-    {
-        CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-            backBuffer.Get(),
-            D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
-        commandList->ResourceBarrier(1, &barrier);
-
-        auto fenceValue = commandQueue->ExecuteCommandList(commandList);
-
-
-        PresentSwapchain();
-
-
-        SetCurrentBackBufferIndex();
-
-        commandQueue->WaitForFenceValue(fenceValue);
-    }
+    Present(commandList);
 }
 
 void DDM::Window::ParseCommandLineArgs()
@@ -319,6 +329,29 @@ void DDM::Window::UpdateRenderTargetViews(ComPtr<ID3D12Device2> device, ComPtr<I
         m_BackBuffers[i] = backBuffer;
 
         rtvHandle.Offset(rtvDescriptorSize);
+    }
+}
+
+void DDM::Window::Present(Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList2> commandList)
+{
+    // Present
+    {
+        CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+            GetCurrentBackBuffer().Get(),
+            D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+        commandList->ResourceBarrier(1, &barrier);
+
+        auto commandQueue = Application::Get().GetCommandQueue();
+
+        auto fenceValue = commandQueue->ExecuteCommandList(commandList);
+
+
+        PresentSwapchain();
+
+
+        SetCurrentBackBufferIndex();
+
+        commandQueue->WaitForFenceValue(fenceValue);
     }
 }
 

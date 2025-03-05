@@ -12,6 +12,8 @@
 
 namespace DDM
 {
+	class Window;
+
 	class Game : public std::enable_shared_from_this<Game>
 	{
 	public:
@@ -55,12 +57,12 @@ namespace DDM
 		friend class Window;
 
 		/**
-		* Update the game logic.
+		* Update the game logic
 		*/
 		virtual void OnUpdate(UpdateEventArgs& e);
 
 		/**
-		* Render stuff.
+		* Render stuff
 		*/
 		virtual void OnRender(RenderEventArgs& e);
 
@@ -72,17 +74,17 @@ namespace DDM
 
 		/**
 		* Invoked when a key on the keyboard is released
-		* when the window has focus.
+		* when the window has focus
 		*/
 		virtual void OnKeyReleased(KeyEventArgs& e);
 
 		/**
-		* Invoked when the mouse is moved over the registered window.
+		* Invoked when the mouse is moved over the registered window
 		*/
 		virtual void OnMouseMoved(MouseMotionEventArgs& e);
 
 		/**
-		* Invoked when a mouse buttons is pressed over the registered window.
+		* Invoked when a mouse buttons is pressed over the registered window
 		*/
 		virtual void OnMouseButtonPressed(MouseButtonEventArgs& e);
 
@@ -90,6 +92,29 @@ namespace DDM
 		* Invoked when mouse button is released over the registered window
 		*/
 		virtual void OnMouseButtonReleased(MouseButtonEventArgs& e);
+
+		/**
+		* Invoked when the mouse wheel is scrolled while the registered window has focus
+		*/
+		virtual void OnMouseWheel(MouseWheelEventArgs& e);
+
+		/**
+		* Invoked when the attached window is resized
+		*/
+		virtual void OnResize(ResizeEventArgs& e);
+
+		/**
+		* Invoked when the registered window instance is destroyed
+		*/
+		virtual void OnWindowDestroy();
+
+		std::shared_ptr<Window> m_pWindow;
+	private:
+		std::wstring m_Name;
+		int m_Width;
+		int m_Height;
+		bool m_vSync;
+		
 	};							     
 }								   
 

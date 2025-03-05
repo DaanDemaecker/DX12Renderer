@@ -2,13 +2,14 @@
 
 // Header include
 #include "Application.h"
-#include "CommandQueue.h"
 
 // File includes
 #include "Window.h" // For DDM::Window class
 #include "FenceObject.h" // For DDM::FenceObjct class
 #include "Helpers/Helpers.h"
 #include "Helpers/DirectXHelpers.h"
+#include "Events.h"
+#include "CommandQueue.h"
 
 static std::shared_ptr<DDM::Window> gs_Window;
 
@@ -88,84 +89,6 @@ void DDM::Application::ParseCommandLineArguments()
     ::LocalFree(argv);
 }
 
-void DDM::Application::GameLoop()
-{
-    Update();
-    Render();
-}
-
-void DDM::Application::Update()
-{
-    static uint64_t frameCounter = 0;
-    static double elapsedSeconds = 0.0;
-    static std::chrono::high_resolution_clock clock;
-    static auto t0 = clock.now();
-
-    frameCounter++;
-    auto t1 = clock.now();
-    auto deltaTime = t1 - t0;
-    t0 = t1;
-    elapsedSeconds += deltaTime.count() * 1e-9;
-    if (elapsedSeconds > 1.0)
-    {
-        char buffer[500];
-        auto fps = frameCounter / elapsedSeconds;
-        sprintf_s(buffer, 500, "FPS: %f\n", fps);
-        OutputDebugString(buffer);
-
-        frameCounter = 0;
-        elapsedSeconds = 0.0;
-    }
-}
-
-void DDM::Application::Render()
-{
-    auto& commandAllocator = g_CommandAllocators[gs_Window->GetCurrentBackBufferIndex()];
-    auto& backBuffer = gs_Window->GetCurrentBackBuffer();
-
-    commandAllocator->Reset();
-    g_CommandList->Reset(commandAllocator.Get(), nullptr);
-
-    // Clear the render target.
-    {
-        CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-            backBuffer.Get(),
-            D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
-
-        g_CommandList->ResourceBarrier(1, &barrier);
-
-        FLOAT clearColor[] = { 0.4f, 0.6f, 0.9f, 1.0f };
-        CD3DX12_CPU_DESCRIPTOR_HANDLE rtv = gs_Window->GetRTV();
-
-        g_CommandList->ClearRenderTargetView(rtv, clearColor, 0, nullptr);
-    }
-
-    // Present
-    {
-        CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-            backBuffer.Get(),
-            D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
-        g_CommandList->ResourceBarrier(1, &barrier);
-
-        ThrowIfFailed(g_CommandList->Close());
-
-
-        ID3D12CommandList* const commandLists[] =
-        {
-              g_CommandList.Get()
-        };
-        g_CommandQueue->ExecuteCommandLists(_countof(commandLists), commandLists);
-
-
-        gs_Window->PresentSwapchain();
-
-        g_FrameFenceValues[gs_Window->GetCurrentBackBufferIndex()] = g_pFenceObject->Signal(g_CommandQueue);
-
-        gs_Window->SetCurrentBackBufferIndex();
-
-        g_pFenceObject->WaitForFenceValue(g_FrameFenceValues[gs_Window->GetCurrentBackBufferIndex()]);
-    }
-}
 
 void DDM::Application::RegisterWindowClass(HINSTANCE hInst, const std::wstring& windowClassName)
 {
@@ -215,8 +138,10 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM l
     switch (message)
     {
     case WM_PAINT:
-        //GameLoop();
-        gs_Window->OnRender();
+    {
+        RenderEventArgs renderArgs{ 0, 0 };
+        gs_Window->OnRender(renderArgs);
+    }
         break;
     case WM_SYSKEYDOWN:
     case WM_KEYDOWN:

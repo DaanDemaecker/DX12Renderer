@@ -5,6 +5,7 @@
 
 // File includes
 #include "Includes/DirectXIncludes.h"
+#include "Events.h"
 
 // Standard library includes
 #include <inttypes.h> // For uint32_t
@@ -62,13 +63,12 @@ namespace DDM
 
 		void ShowWindow();
 
-		void OnRender();
+		void OnUpdate(UpdateEventArgs& e);
+
+		void OnRender(RenderEventArgs& e);
 
 
 	private:
-		// The Window procedure needs to call protected methods of this class.
-		friend LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
-
 		// Window Handle
 		HWND m_hWnd;
 		// Window rectangle  (used to toggle fullscreen state)
@@ -99,8 +99,6 @@ namespace DDM
 
 		void ParseCommandLineArgs();
 
-		void RegisterWindowClass(WNDPROC pWndProc, HINSTANCE hInst, const wchar_t* windowClassName);
-
 		HWND CreateWindow(const std::wstring& windowClassName, HINSTANCE hInst,
 			const wchar_t* windowTitle, uint32_t width, uint32_t height);
 
@@ -110,6 +108,8 @@ namespace DDM
 
 		void UpdateRenderTargetViews(ComPtr<ID3D12Device2> device,
 			ComPtr<IDXGISwapChain4> swapChain, ComPtr<ID3D12DescriptorHeap> descriptorHeap);
+
+		void Present(Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList2> commandList);
 	};
 }
 
