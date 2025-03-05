@@ -4,7 +4,7 @@ set(SRC_FILES
 	"main.cpp"
 	"Window.cpp"
 	"Application.cpp"
-	"FenceObject.cpp"
+	
  "CommandQueue.cpp"
  "Game.cpp")
 

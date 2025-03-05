@@ -4,7 +4,6 @@
 // File includes
 #include "Helpers/Helpers.h"
 #include "Helpers/DirectXHelpers.h"
-#include "FenceObject.h"
 #include "CommandQueue.h"
 #include "Application.h"
 
@@ -35,7 +34,7 @@ DDM::Window::~Window()
 }
 
 void DDM::Window::Resize(uint32_t width, uint32_t height, ComPtr<ID3D12Device2> device, ComPtr<ID3D12CommandQueue> commandQueue,
-    FenceObject* pFenceObject, std::vector<uint64_t>& frameFenceValues)
+    std::vector<uint64_t>& frameFenceValues)
 {
     if (m_ClientWidth != width || m_ClientHeight != height)
     {
@@ -45,8 +44,7 @@ void DDM::Window::Resize(uint32_t width, uint32_t height, ComPtr<ID3D12Device2> 
 
         // Flush the GPU queue to make sure the swap chain's back buffers
         // are not being referenced by an in-flight command list.
-        pFenceObject->Flush(commandQueue);
-
+        Application::Get().GetCommandQueue()->Flush();
         
 
         for (int i = 0; i < m_NumFrames; ++i)

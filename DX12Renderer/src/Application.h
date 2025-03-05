@@ -18,7 +18,6 @@ using namespace Microsoft::WRL;
 namespace DDM
 {
 	class Window;
-	class FenceObject;
 	class CommandQueue;
 
 	class Application final : public Singleton<Application>
@@ -44,25 +43,17 @@ namespace DDM
 	private:
 		std::wstring m_WindowClassName = L"DX12WindowClass";
 		
-		HINSTANCE m_Instance;
+		HINSTANCE m_Instance = nullptr;
 
 		// Use WARP adapter
 		bool m_UseWarp = false;
 
-		uint8_t g_NumFrames;
+		uint8_t g_NumFrames = 3;
 
 		// DirectX 12 Objects
 		ComPtr<ID3D12Device2> g_Device;
 
 		std::unique_ptr<CommandQueue> m_pCommandQueue;
-
-		ComPtr<ID3D12CommandQueue> g_CommandQueue;
-		ComPtr<ID3D12GraphicsCommandList> g_CommandList;
-		std::vector<ComPtr<ID3D12CommandAllocator>> g_CommandAllocators;
-
-		// Fence objects
-		std::unique_ptr<DDM::FenceObject> g_pFenceObject;
-		std::vector<uint64_t> g_FrameFenceValues;
 
 		void ParseCommandLineArguments();
 

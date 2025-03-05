@@ -5,7 +5,6 @@
 
 // File includes
 #include "Window.h" // For DDM::Window class
-#include "FenceObject.h" // For DDM::FenceObjct class
 #include "Helpers/Helpers.h"
 #include "Helpers/DirectXHelpers.h"
 #include "Events.h"
@@ -49,9 +48,6 @@ bool DDM::Application::Initialize(HINSTANCE hInst, uint8_t numFrames)
     g_Device = CreateDevice(GetAdapter(m_UseWarp));
     
     m_pCommandQueue = std::make_unique<DDM::CommandQueue>(g_Device, D3D12_COMMAND_LIST_TYPE_DIRECT);
-    
-    g_pFenceObject = std::make_unique<DDM::FenceObject>(g_Device, g_NumFrames);
-    g_FrameFenceValues.resize(g_NumFrames);
 
     return true;
 }
