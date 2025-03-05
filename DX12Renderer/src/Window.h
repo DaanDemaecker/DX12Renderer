@@ -21,11 +21,13 @@ using namespace Microsoft::WRL;
 
 namespace DDM
 {
+	class Game;
+
 	class Window
 	{
 	public:
 		Window() = delete;
-		Window(const std::wstring& windowClassName, HINSTANCE hInst,
+		Window(ComPtr<ID3D12Device2> device, const std::wstring& windowClassName, HINSTANCE hInst,
 			const std::wstring& windowTitle, uint8_t numFrames,
 			int clientWidth, int clientHeight, bool vsync);
 		
@@ -42,8 +44,7 @@ namespace DDM
 
 		HWND GetWindowHandle() { return m_hWnd; }
 
-		void Resize(uint32_t width, uint32_t height, ComPtr<ID3D12Device2> device,
-			ComPtr<ID3D12CommandQueue> commandQueue, std::vector<uint64_t>& frameFenceValues);
+		void Resize(uint32_t width, uint32_t height);
 
 		void CreateSwapchain(ComPtr<ID3D12CommandQueue> commandQueue, ComPtr<ID3D12Device2> device);
 
@@ -61,9 +62,56 @@ namespace DDM
 
 		void ShowWindow();
 
+		void RegisterGame(std::shared_ptr<Game> pGame);
+
+		void UnRegisterGame(std::shared_ptr<Game> pGame);
+
+		/**
+		* Update the game logic
+		*/
 		void OnUpdate(UpdateEventArgs& e);
 
+		/**
+		* Render stuff
+		*/
 		void OnRender(RenderEventArgs& e);
+
+		/**
+		* Invoked by the registered window when a key is pressed
+		* while window has focus
+		*/
+		void OnKeyPressed(KeyEventArgs& e);
+
+		/**
+		* Invoked when a key on the keyboard is released
+		* when the window has focus
+		*/
+		void OnKeyReleased(KeyEventArgs& e);
+
+		/**
+		* Invoked when the mouse is moved over the registered window
+		*/
+		void OnMouseMoved(MouseMotionEventArgs& e);
+
+		/**
+		* Invoked when a mouse buttons is pressed over the registered window
+		*/
+		void OnMouseButtonPressed(MouseButtonEventArgs& e);
+
+		/**
+		* Invoked when mouse button is released over the registered window
+		*/
+		void OnMouseButtonReleased(MouseButtonEventArgs& e);
+
+		/**
+		* Invoked when the mouse wheel is scrolled while the registered window has focus
+		*/
+		void OnMouseWheel(MouseWheelEventArgs& e);
+
+		/**
+		* Invoked when the attached window is resized
+		*/
+		 void OnResize(ResizeEventArgs& e);;
 
 
 	private:
@@ -71,6 +119,11 @@ namespace DDM
 		HWND m_hWnd;
 		// Window rectangle  (used to toggle fullscreen state)
 		RECT m_WindowRect;
+
+		ComPtr<ID3D12Device2> m_Device;
+
+		// The registered game class for this window
+		std::shared_ptr<Game> m_pGame{};
 
 		// Amount of frames in flight
 		uint8_t m_NumFrames;

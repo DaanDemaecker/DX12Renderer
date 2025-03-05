@@ -6,6 +6,7 @@
 #include "Helpers/DirectXHelpers.h"
 #include "CommandQueue.h"
 #include "Application.h"
+#include "Game.h"
 
 // Standard library includes
 #include <shellapi.h> // For CommandLineToArgvW
@@ -13,9 +14,9 @@
 #include <algorithm>
 
 
-DDM::Window::Window(const std::wstring& windowClassName, HINSTANCE hInst, const std::wstring& windowTitle, uint8_t numFrames,
+DDM::Window::Window(ComPtr<ID3D12Device2> device, const std::wstring& windowClassName, HINSTANCE hInst, const std::wstring& windowTitle, uint8_t numFrames,
     int clientWidth, int clientHeight, bool vsync)
-    : m_NumFrames{ numFrames }, m_ClientWidth{clientWidth}, m_ClientHeight{clientHeight}, m_VSync{vsync}
+    : m_Device{device}, m_NumFrames{ numFrames }, m_ClientWidth{clientWidth}, m_ClientHeight{clientHeight}, m_VSync{vsync}
 {
     ParseCommandLineArgs();
 
@@ -33,8 +34,7 @@ DDM::Window::~Window()
     Application::Get().GetCommandQueue()->Flush();
 }
 
-void DDM::Window::Resize(uint32_t width, uint32_t height, ComPtr<ID3D12Device2> device, ComPtr<ID3D12CommandQueue> commandQueue,
-    std::vector<uint64_t>& frameFenceValues)
+void DDM::Window::Resize(uint32_t width, uint32_t height)
 {
     if (m_ClientWidth != width || m_ClientHeight != height)
     {
@@ -52,7 +52,6 @@ void DDM::Window::Resize(uint32_t width, uint32_t height, ComPtr<ID3D12Device2> 
             // Any references to the back buffers must be released
             // before the swap chain can be resized.
             m_BackBuffers[i].Reset();
-            frameFenceValues[i] = frameFenceValues[m_CurrentBackBufferIndex];
         }
 
         DXGI_SWAP_CHAIN_DESC swapChainDesc = {};
@@ -62,7 +61,7 @@ void DDM::Window::Resize(uint32_t width, uint32_t height, ComPtr<ID3D12Device2> 
 
         m_CurrentBackBufferIndex = m_SwapChain->GetCurrentBackBufferIndex();
 
-        UpdateRenderTargetViews(device, m_SwapChain, m_RTVDescriptorHeap);
+        UpdateRenderTargetViews(m_Device, m_SwapChain, m_RTVDescriptorHeap);
     }
 }
 
@@ -104,6 +103,19 @@ void DDM::Window::ShowWindow()
     ::ShowWindow(m_hWnd, SW_SHOW);
 }
 
+void DDM::Window::RegisterGame(std::shared_ptr<Game> pGame)
+{
+    m_pGame = pGame;
+}
+
+void DDM::Window::UnRegisterGame(std::shared_ptr<Game> pGame)
+{
+    if (pGame == m_pGame)
+    {
+        pGame = nullptr;
+    }
+}
+
 void DDM::Window::OnUpdate(UpdateEventArgs& e)
 {
     static uint64_t frameCounter = 0;
@@ -128,6 +140,11 @@ void DDM::Window::OnUpdate(UpdateEventArgs& e)
     }
 
     e.ElapsedTime = elapsedSeconds;
+
+    if (m_pGame)
+    {
+        m_pGame->OnUpdate(e);
+    }
 }
 
 void DDM::Window::OnRender(RenderEventArgs& e)
@@ -152,7 +169,89 @@ void DDM::Window::OnRender(RenderEventArgs& e)
         commandList->ClearRenderTargetView(rtv, clearColor, 0, nullptr);
     }
 
+    if (m_pGame)
+    {
+        m_pGame->OnRender(e);
+    }
+
     Present(commandList);
+}
+
+void DDM::Window::OnKeyPressed(KeyEventArgs& e)
+{
+    switch (e.Key)
+    {
+    case KeyCode::V:
+        ToggleVsync();
+        break;
+    case VK_ESCAPE:
+        ::PostQuitMessage(0);
+        break;
+    case VK_RETURN:
+        if (e.Alt)
+        {
+            ToggleFullscreen();
+        }
+        break;
+    case KeyCode::F11:
+        ToggleFullscreen();
+        break;
+    }
+
+    if (m_pGame)
+    {
+        m_pGame->OnKeyPressed(e);
+    }
+}
+
+void DDM::Window::OnKeyReleased(KeyEventArgs& e)
+{
+    if (m_pGame)
+    {
+        m_pGame->OnKeyReleased(e);
+    }
+}
+
+void DDM::Window::OnMouseMoved(MouseMotionEventArgs& e)
+{
+    if (m_pGame)
+    {
+        m_pGame->OnMouseMoved(e);
+    }
+}
+
+void DDM::Window::OnMouseButtonPressed(MouseButtonEventArgs& e)
+{
+    if (m_pGame)
+    {
+        m_pGame->OnMouseButtonPressed(e);
+    }
+}
+
+void DDM::Window::OnMouseButtonReleased(MouseButtonEventArgs& e)
+{
+    if (m_pGame)
+    {
+        m_pGame->OnMouseButtonReleased(e);
+    }
+}
+
+void DDM::Window::OnMouseWheel(MouseWheelEventArgs& e)
+{
+    if (m_pGame)
+    {
+        m_pGame->OnMouseWheel(e);
+    }
+}
+
+void DDM::Window::OnResize(ResizeEventArgs& e)
+{
+    if (m_pGame)
+    {
+        m_pGame->OnResize(e);
+    }
+
+    Resize(e.Width, e.Height);
 }
 
 void DDM::Window::ParseCommandLineArgs()

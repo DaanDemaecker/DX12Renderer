@@ -51,7 +51,7 @@ namespace DDM
 		uint8_t g_NumFrames = 3;
 
 		// DirectX 12 Objects
-		ComPtr<ID3D12Device2> g_Device;
+		ComPtr<ID3D12Device2> m_Device;
 
 		std::unique_ptr<CommandQueue> m_pCommandQueue;
 

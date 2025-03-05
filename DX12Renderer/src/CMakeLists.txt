@@ -1,12 +1,12 @@
 project(DX12Renderer)
 
 set(SRC_FILES
-	"main.cpp"
-	"Window.cpp"
-	"Application.cpp"
-	
- "CommandQueue.cpp"
- "Game.cpp")
+"main.cpp"
+"Window.cpp"
+"Application.cpp"
+"CommandQueue.cpp"
+"Game.cpp"
+"Games/TestGame1.cpp")
 
 add_executable(DXRenderer ${SRC_FILES})
 
