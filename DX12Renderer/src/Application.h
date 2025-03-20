@@ -41,6 +41,8 @@ namespace DDM
 		std::shared_ptr<Window> CreateRenderWindow(const std::wstring& windowName, int clientWidth, int clientHeight, bool vsync = true);
 
 		CommandQueue* GetCommandQueue();
+
+		ComPtr<ID3D12Device2> GetDevice();
 	private:
 		std::wstring m_WindowClassName = L"DX12WindowClass";
 		

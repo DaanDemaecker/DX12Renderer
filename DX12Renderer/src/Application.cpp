@@ -137,6 +137,11 @@ DDM::CommandQueue* DDM::Application::GetCommandQueue()
     return m_pCommandQueue.get();
 }
 
+ComPtr<ID3D12Device2> DDM::Application::GetDevice()
+{
+    return m_Device;
+}
+
 // Convert the message ID into a MouseButton ID
 static MouseButtonEventArgs::MouseButton DecodeMouseButton(UINT messageID)
 {

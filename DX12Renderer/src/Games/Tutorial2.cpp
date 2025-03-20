@@ -3,6 +3,9 @@
 // Header include
 #include "Tutorial2.h"
 
+// File includes
+#include "Application.h"
+#include "Helpers/Helpers.h"
 
 using namespace DirectX;
 
@@ -87,6 +90,38 @@ void DDM::Tutorial2::ClearDepth(ComPtr<ID3D12GraphicsCommandList2> commandList, 
 
 void DDM::Tutorial2::UpdateBufferResource(ComPtr<ID3D12GraphicsCommandList2> commandList, ID3D12Resource** pDestinationResource, ID3D12Resource** pIntermediateResource, size_t numElements, size_t elementSize, const void* bufferData, D3D12_RESOURCE_FLAGS flags)
 {
+    auto device = DDM::Application::Get().GetDevice();
+
+    size_t bufferSize = numElements * elementSize;
+
+    // Create a committed resource for the GPU resource in a default heap
+    ThrowIfFailed(device->CreateCommittedResource(
+        &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+        D3D12_HEAP_FLAG_NONE,
+        &CD3DX12_RESOURCE_DESC::Buffer(bufferSize, flags),
+        D3D12_RESOURCE_STATE_GENERIC_READ,
+        nullptr,
+        IID_PPV_ARGS(pIntermediateResource)));
+
+    if (bufferData)
+    {
+        ThrowIfFailed(device->CreateCommittedResource(
+            &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+            D3D12_HEAP_FLAG_NONE,
+            &CD3DX12_RESOURCE_DESC::Buffer(bufferSize),
+            D3D12_RESOURCE_STATE_GENERIC_READ,
+            nullptr,
+            IID_PPV_ARGS(pIntermediateResource)));
+
+        D3D12_SUBRESOURCE_DATA subresourceData = {};
+        subresourceData.pData = bufferData;
+        subresourceData.RowPitch = bufferSize;
+        subresourceData.SlicePitch = subresourceData.RowPitch;
+
+        UpdateSubresources(commandList.Get(),
+            *pDestinationResource, *pIntermediateResource,
+            0, 0, 1, &subresourceData);
+    }
 }
 
 void DDM::Tutorial2::ResizeDepthBuffer(int width, int height)
