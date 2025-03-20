@@ -26,9 +26,12 @@ namespace DDM
 	class Window
 	{
 	public:
+		// Number of swapchain back buffers.
+		static const UINT BufferCount = 3;
+
 		Window() = delete;
 		Window(ComPtr<ID3D12Device2> device, const std::wstring& windowClassName, HINSTANCE hInst,
-			const std::wstring& windowTitle, uint8_t numFrames,
+			const std::wstring& windowTitle,
 			int clientWidth, int clientHeight, bool vsync);
 		
 		~Window();
@@ -124,9 +127,6 @@ namespace DDM
 
 		// The registered game class for this window
 		std::shared_ptr<Game> m_pGame{};
-
-		// Amount of frames in flight
-		uint8_t m_NumFrames;
 
 		// Client dimensions
 		int m_ClientWidth;

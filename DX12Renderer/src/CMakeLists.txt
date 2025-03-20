@@ -6,7 +6,8 @@ set(SRC_FILES
 "Application.cpp"
 "CommandQueue.cpp"
 "Game.cpp"
-"Games/TestGame1.cpp")
+"Games/TestGame1.cpp"
+"Games/Tutorial2.cpp")
 
 
 add_executable(DXRenderer ${SRC_FILES})

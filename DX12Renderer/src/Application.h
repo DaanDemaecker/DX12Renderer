@@ -19,6 +19,7 @@ namespace DDM
 {
 	class Window;
 	class CommandQueue;
+	class Game;
 
 	class Application final : public Singleton<Application>
 	{
@@ -33,9 +34,9 @@ namespace DDM
 		Application& operator=(Application& other) = delete;
 		Application& operator=(Application&& other) = delete;
 		
-		bool Initialize(HINSTANCE hIns, uint8_t numFrames);
+		bool Initialize(HINSTANCE hIns);
 
-		void Run();
+		int Run(std::shared_ptr<Game> pGame);
 
 		std::shared_ptr<Window> CreateRenderWindow(const std::wstring& windowName, int clientWidth, int clientHeight, bool vsync = true);
 
@@ -47,8 +48,6 @@ namespace DDM
 
 		// Use WARP adapter
 		bool m_UseWarp = false;
-
-		uint8_t g_NumFrames = 3;
 
 		// DirectX 12 Objects
 		ComPtr<ID3D12Device2> m_Device;

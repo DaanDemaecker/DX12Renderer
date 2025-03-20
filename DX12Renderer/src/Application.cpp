@@ -9,6 +9,7 @@
 #include "Helpers/DirectXHelpers.h"
 #include "Events.h"
 #include "CommandQueue.h"
+#include "Game.h"
 
 static std::shared_ptr<DDM::Window> gs_Window;
 
@@ -26,10 +27,8 @@ DDM::Application::~Application()
     //g_pFenceObject->CloseHandle(g_CommandQueue);
 }
 
-bool DDM::Application::Initialize(HINSTANCE hInst, uint8_t numFrames)
+bool DDM::Application::Initialize(HINSTANCE hInst)
 {
-    g_NumFrames = numFrames;
-    
     m_Instance = hInst;
 
     RegisterWindowClass(hInst, m_WindowClassName);
@@ -52,8 +51,12 @@ bool DDM::Application::Initialize(HINSTANCE hInst, uint8_t numFrames)
     return true;
 }
 
-void DDM::Application::Run()
+int DDM::Application::Run(std::shared_ptr<Game> pGame)
 {
+    if (!pGame->Initialize()) return 1;
+    if (!pGame->LoadContent()) return 2;
+
+
     MSG msg = {};
 
     while (msg.message != WM_QUIT)
@@ -65,7 +68,12 @@ void DDM::Application::Run()
         }
     }
 
-    DestroyWindow();
+    m_pCommandQueue->Flush();
+
+    pGame->UnloadContent();
+    pGame->Destroy();
+
+    return static_cast<int>(msg.wParam);
 }
 
 void DDM::Application::ParseCommandLineArguments()
@@ -115,7 +123,7 @@ void DDM::Application::DestroyWindow()
 
 std::shared_ptr<DDM::Window> DDM::Application::CreateRenderWindow(const std::wstring& windowName, int clientWidth, int clientHeight, bool vsync)
 {
-    gs_Window = std::make_shared<DDM::Window>(m_Device, m_WindowClassName, m_Instance, windowName, g_NumFrames, clientWidth, clientHeight, vsync);
+    gs_Window = std::make_shared<DDM::Window>(m_Device, m_WindowClassName, m_Instance, windowName, clientWidth, clientHeight, vsync);
 
     gs_Window->CreateSwapchain(Application::Get().GetCommandQueue()->GetD3D12CommandQueue(), m_Device);
 

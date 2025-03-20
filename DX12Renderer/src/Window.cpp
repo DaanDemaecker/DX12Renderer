@@ -14,9 +14,9 @@
 #include <algorithm>
 
 
-DDM::Window::Window(ComPtr<ID3D12Device2> device, const std::wstring& windowClassName, HINSTANCE hInst, const std::wstring& windowTitle, uint8_t numFrames,
+DDM::Window::Window(ComPtr<ID3D12Device2> device, const std::wstring& windowClassName, HINSTANCE hInst, const std::wstring& windowTitle,
     int clientWidth, int clientHeight, bool vsync)
-    : m_Device{device}, m_NumFrames{ numFrames }, m_ClientWidth{clientWidth}, m_ClientHeight{clientHeight}, m_VSync{vsync}
+    : m_Device{device}, m_ClientWidth{clientWidth}, m_ClientHeight{clientHeight}, m_VSync{vsync}
 {
     ParseCommandLineArgs();
 
@@ -31,7 +31,7 @@ DDM::Window::Window(ComPtr<ID3D12Device2> device, const std::wstring& windowClas
 
 DDM::Window::~Window()
 {
-    Application::Get().GetCommandQueue()->Flush();
+
 }
 
 void DDM::Window::Resize(uint32_t width, uint32_t height)
@@ -47,7 +47,7 @@ void DDM::Window::Resize(uint32_t width, uint32_t height)
         Application::Get().GetCommandQueue()->Flush();
         
 
-        for (int i = 0; i < m_NumFrames; ++i)
+        for (int i = 0; i < BufferCount; ++i)
         {
             // Any references to the back buffers must be released
             // before the swap chain can be resized.
@@ -56,7 +56,7 @@ void DDM::Window::Resize(uint32_t width, uint32_t height)
 
         DXGI_SWAP_CHAIN_DESC swapChainDesc = {};
         ThrowIfFailed(m_SwapChain->GetDesc(&swapChainDesc));
-        ThrowIfFailed(m_SwapChain->ResizeBuffers(m_NumFrames, m_ClientWidth, m_ClientHeight,
+        ThrowIfFailed(m_SwapChain->ResizeBuffers(BufferCount, m_ClientWidth, m_ClientHeight,
             swapChainDesc.BufferDesc.Format, swapChainDesc.Flags));
 
         m_CurrentBackBufferIndex = m_SwapChain->GetCurrentBackBufferIndex();
@@ -67,14 +67,14 @@ void DDM::Window::Resize(uint32_t width, uint32_t height)
 
 void DDM::Window::CreateSwapchain(ComPtr<ID3D12CommandQueue> commandQueue, ComPtr<ID3D12Device2> device)
 {
-    m_BackBuffers.resize(m_NumFrames);
+    m_BackBuffers.resize(BufferCount);
 
     m_SwapChain = CreateSwapChain(m_hWnd, commandQueue,
-        m_ClientWidth, m_ClientHeight, m_NumFrames);
+        m_ClientWidth, m_ClientHeight, BufferCount);
 
     m_CurrentBackBufferIndex = m_SwapChain->GetCurrentBackBufferIndex();
 
-    m_RTVDescriptorHeap = CreateDescriptorHeap(device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, m_NumFrames);
+    m_RTVDescriptorHeap = CreateDescriptorHeap(device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, BufferCount);
     m_RTVDescriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
     UpdateRenderTargetViews(device, m_SwapChain, m_RTVDescriptorHeap);
@@ -416,7 +416,7 @@ void DDM::Window::UpdateRenderTargetViews(ComPtr<ID3D12Device2> device, ComPtr<I
 
     CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(descriptorHeap->GetCPUDescriptorHandleForHeapStart());
 
-    for (int i = 0; i < m_NumFrames; ++i)
+    for (int i = 0; i < BufferCount; ++i)
     {
         ComPtr<ID3D12Resource> backBuffer;
         ThrowIfFailed(swapChain->GetBuffer(i, IID_PPV_ARGS(&backBuffer)));

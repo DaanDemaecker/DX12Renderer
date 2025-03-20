@@ -18,9 +18,7 @@ using namespace Microsoft::WRL;
 
 // File includes
 #include "Application.h"
-
-// Number of swap chain back buffers
-constexpr uint8_t g_NumFrames = 3;
+#include "Games/Tutorial2.h"
 
 
 void OpenConsole()
@@ -43,11 +41,14 @@ int CALLBACK WINAPI wWinMain(
     OpenConsole();
 #endif
 
-    DDM::Application::Get().Initialize(hInstance, g_NumFrames);
+    DDM::Application::Get().Initialize(hInstance);
 
-    DDM::Application::Get().CreateRenderWindow(L"DirectX12 Tutorial", 1280, 720, true);
-    
-    DDM::Application::Get().Run();
+    {
+        auto pGame = std::make_shared<DDM::Tutorial2>(L"DirectX tutorial 2", 1080, 720, true);
+
+        DDM::Application::Get().Run(pGame);
+    }
+
 
     return 0;
 }

@@ -28,15 +28,15 @@ bool DDM::Game::Initialize()
 	}
 
 	m_pWindow = Application::Get().CreateRenderWindow(m_Name, m_Width, m_Height, m_vSync);
-	
-	m_pWindow->ShowWindow();
 
+	m_pWindow->RegisterGame(shared_from_this());
 
 	return true;
 }
 
 void DDM::Game::Destroy()
 {
+	m_pWindow->UnRegisterGame(shared_from_this());
 }
 
 void DDM::Game::OnUpdate(UpdateEventArgs& e)
