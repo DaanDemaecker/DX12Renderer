@@ -149,32 +149,32 @@ void DDM::Window::OnUpdate(UpdateEventArgs& e)
 
 void DDM::Window::OnRender(RenderEventArgs& e)
 {
-    auto commandQueue = DDM::Application::Get().GetCommandQueue();
+    //auto commandQueue = DDM::Application::Get().GetCommandQueue();
 
 
-    auto commandList = commandQueue->GetCommandList();
-    auto& backBuffer = GetCurrentBackBuffer();
+    //auto commandList = commandQueue->GetCommandList();
+    //auto& backBuffer = GetCurrentBackBuffer();
 
-    // Clear the render target.
-    {
-        CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-            backBuffer.Get(),
-            D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+    //// Clear the render target.
+    //{
+    //    CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+    //        backBuffer.Get(),
+    //        D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
-        commandList->ResourceBarrier(1, &barrier);
+    //    commandList->ResourceBarrier(1, &barrier);
 
-        FLOAT clearColor[] = { 0.4f, 0.6f, 0.9f, 1.0f };
-        CD3DX12_CPU_DESCRIPTOR_HANDLE rtv = GetRTV();
+    //    FLOAT clearColor[] = { 0.4f, 0.6f, 0.9f, 1.0f };
+    //    CD3DX12_CPU_DESCRIPTOR_HANDLE rtv = GetRTV();
 
-        commandList->ClearRenderTargetView(rtv, clearColor, 0, nullptr);
-    }
+    //    commandList->ClearRenderTargetView(rtv, clearColor, 0, nullptr);
+    //}
 
     if (m_pGame)
     {
         m_pGame->OnRender(e);
     }
 
-    Present(commandList);
+    //Present(commandList);
 }
 
 void DDM::Window::OnKeyPressed(KeyEventArgs& e)
