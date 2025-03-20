@@ -95,7 +95,7 @@ namespace DDM
 		// Root signature
 		ComPtr<ID3D12RootSignature> m_RootSignature;
 
-		D3D12_VIEWPORT m_Vieport;
+		D3D12_VIEWPORT m_Viewport;
 		D3D12_RECT m_ScissorRect;
 
 		float m_FoV;
