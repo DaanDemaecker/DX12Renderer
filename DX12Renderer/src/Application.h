@@ -6,6 +6,7 @@
 // File includes
 #include "Includes/DirectXIncludes.h"
 #include "Singleton.h"
+#include "CommandQueue.h"
 
 // Standard library includes
 #include <memory> // For std::unique_ptr
@@ -18,7 +19,6 @@ using namespace Microsoft::WRL;
 namespace DDM
 {
 	class Window;
-	class CommandQueue;
 	class Game;
 
 	class Application final : public Singleton<Application>

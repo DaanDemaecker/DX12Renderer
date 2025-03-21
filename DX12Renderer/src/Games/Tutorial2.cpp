@@ -94,21 +94,27 @@ void DDM::Tutorial2::UpdateBufferResource(ComPtr<ID3D12GraphicsCommandList2> com
 
     size_t bufferSize = numElements * elementSize;
 
+    auto defaultHeapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+    auto bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(bufferSize, flags);
+
     // Create a committed resource for the GPU resource in a default heap
     ThrowIfFailed(device->CreateCommittedResource(
-        &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+        &defaultHeapProperties,
         D3D12_HEAP_FLAG_NONE,
-        &CD3DX12_RESOURCE_DESC::Buffer(bufferSize, flags),
-        D3D12_RESOURCE_STATE_GENERIC_READ,
+        &bufferDesc,
+        D3D12_RESOURCE_STATE_COMMON,
         nullptr,
-        IID_PPV_ARGS(pIntermediateResource)));
+        IID_PPV_ARGS(pDestinationResource)));
 
     if (bufferData)
     {
+        auto uploadHeapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+        auto bufferDesc2 = CD3DX12_RESOURCE_DESC::Buffer(bufferSize);
+
         ThrowIfFailed(device->CreateCommittedResource(
-            &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+            &uploadHeapProperties,
             D3D12_HEAP_FLAG_NONE,
-            &CD3DX12_RESOURCE_DESC::Buffer(bufferSize),
+            &bufferDesc2,
             D3D12_RESOURCE_STATE_GENERIC_READ,
             nullptr,
             IID_PPV_ARGS(pIntermediateResource)));

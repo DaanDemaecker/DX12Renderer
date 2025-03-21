@@ -33,6 +33,16 @@ namespace DDM
 		Game& operator=(Game& other) = delete;
 		Game& operator=(Game&& other) = delete;
 
+		int GetClientWidth() const
+		{
+			return m_Width;
+		}
+
+		int GetClientHeight() const
+		{
+			return m_Height;
+		}
+
 		/**
 		* Initialze the DirectX Runtime.
 		*/
