@@ -84,11 +84,11 @@ bool DDM::Tutorial2::LoadContent()
 
     // Load the vertex shader.
     ComPtr<ID3DBlob> vertexShaderBlob;
-    ThrowIfFailed(D3DReadFileToBlob(L"VertexShader.cso", &vertexShaderBlob));
+    ThrowIfFailed(D3DReadFileToBlob(L"Resources/Shaders/Default_VS.cso", &vertexShaderBlob));
 
     // Load the pixel shader.
     ComPtr<ID3DBlob> pixelShaderBlob;
-    ThrowIfFailed(D3DReadFileToBlob(L"PixelShader.cso", &pixelShaderBlob));
+    ThrowIfFailed(D3DReadFileToBlob(L"Resources/Shaders/Default_PS.cso", &pixelShaderBlob));
 
     // Create the vertex input layout
     D3D12_INPUT_ELEMENT_DESC inputLayout[] = {

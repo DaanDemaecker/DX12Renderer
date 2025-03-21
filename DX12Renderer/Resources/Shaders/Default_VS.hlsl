@@ -6,7 +6,7 @@ ConstantBuffer<ModelViewProjection> ModelViewProjectionCB : register(b0);
 
 struct VertexPosColor
 {
-    float3 Position : POSITIONT;
+    float3 Position : POSITION;
     float3 Color : COLOR;
 };
 
