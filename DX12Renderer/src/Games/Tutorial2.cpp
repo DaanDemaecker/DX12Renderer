@@ -183,6 +183,40 @@ void DDM::Tutorial2::UnloadContent()
 
 void DDM::Tutorial2::OnUpdate(UpdateEventArgs& e)
 {
+    static uint64_t frameCount = 0;
+    static double totalTime = 0.0;
+
+    Game::OnUpdate(e);
+
+    totalTime += e.ElapsedTime;
+    frameCount++;
+
+    if (totalTime > 1.0)
+    {
+        double fps = frameCount / totalTime;
+
+        char buffer[512];
+        sprintf_s(buffer, "FPS: %f\n", fps);
+        OutputDebugStringA(buffer);
+
+        frameCount = 0;
+        totalTime = 0.0;
+    }
+
+    // Update the model matrix.
+    float angle = static_cast<float>(e.TotalTime * 90.0);
+    const XMVECTOR rotationAxis = XMVectorSet(0, 1, 1, 0);
+    m_ModelMatrix = XMMatrixRotationAxis(rotationAxis, XMConvertToRadians(angle));
+
+    // Update the view matrix.
+    const XMVECTOR eyePosition = XMVectorSet(0, 0, -10, 1);
+    const XMVECTOR focusPoint = XMVectorSet(0, 0, 0, 1);
+    const XMVECTOR upDirection = XMVectorSet(0, 1, 0, 0);
+    m_ViewMatrix = XMMatrixLookAtLH(eyePosition, focusPoint, upDirection);
+
+    // Update the projection matrix.
+    float aspectRatio = GetClientWidth() / static_cast<float>(GetClientHeight());
+    m_ProjectionMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(m_FoV), aspectRatio, 0.1f, 100.0f);
 }
 
 void DDM::Tutorial2::OnRender(RenderEventArgs& e)
