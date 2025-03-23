@@ -67,7 +67,7 @@ namespace DDM
 		// Clear the depth of a depth-stencil view
 
 		void ClearDepth(ComPtr<ID3D12GraphicsCommandList2> commandList,
-			D3D12_CPU_DESCRIPTOR_HANDLE dsv, FLOAT demth = 1.0f);
+			D3D12_CPU_DESCRIPTOR_HANDLE dsv, FLOAT depth = 1.0f);
 
 		// Create a GPU buffer
 		void UpdateBufferResource(ComPtr<ID3D12GraphicsCommandList2> commandList,

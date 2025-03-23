@@ -8,6 +8,7 @@
 #include "Helpers/Helpers.h"
 
 // Standard library includes
+#include <iostream> // For std::cout
 #include <algorithm> // For std::min and std::max.
 #if defined(min)
 #undef min
@@ -195,9 +196,7 @@ void DDM::Tutorial2::OnUpdate(UpdateEventArgs& e)
     {
         double fps = frameCount / totalTime;
 
-        char buffer[512];
-        sprintf_s(buffer, "FPS: %f\n", fps);
-        OutputDebugStringA(buffer);
+        std::cout << "FPS: " << fps << std::endl;
 
         frameCount = 0;
         totalTime = 0.0;
@@ -255,10 +254,12 @@ void DDM::Tutorial2::TransitionResource(ComPtr<ID3D12GraphicsCommandList2> comma
 
 void DDM::Tutorial2::ClearRTV(ComPtr<ID3D12GraphicsCommandList2> commandList, D3D12_CPU_DESCRIPTOR_HANDLE rtv, FLOAT* clearColor)
 {
+    commandList->ClearRenderTargetView(rtv, clearColor, 0, nullptr);
 }
 
-void DDM::Tutorial2::ClearDepth(ComPtr<ID3D12GraphicsCommandList2> commandList, D3D12_CPU_DESCRIPTOR_HANDLE dsv, FLOAT demth)
+void DDM::Tutorial2::ClearDepth(ComPtr<ID3D12GraphicsCommandList2> commandList, D3D12_CPU_DESCRIPTOR_HANDLE dsv, FLOAT depth)
 {
+    commandList->ClearDepthStencilView(dsv, D3D12_CLEAR_FLAG_DEPTH, depth, 0, 0, nullptr);
 }
 
 void DDM::Tutorial2::UpdateBufferResource(ComPtr<ID3D12GraphicsCommandList2> commandList, ID3D12Resource** pDestinationResource, ID3D12Resource** pIntermediateResource, size_t numElements, size_t elementSize, const void* bufferData, D3D12_RESOURCE_FLAGS flags)
