@@ -7,6 +7,16 @@
 #include "Application.h"
 #include "Helpers/Helpers.h"
 
+// Standard library includes
+#include <algorithm> // For std::min and std::max.
+#if defined(min)
+#undef min
+#endif
+
+#if defined(max)
+#undef max
+#endif
+
 using namespace DirectX;
 
 // Vertex data for a colored cube.
@@ -247,4 +257,44 @@ void DDM::Tutorial2::UpdateBufferResource(ComPtr<ID3D12GraphicsCommandList2> com
 
 void DDM::Tutorial2::ResizeDepthBuffer(int width, int height)
 {
+    if (m_ContentLoaded)
+    {
+        // Flush any GPU commands that might be referencing the depth buffer.
+        Application::Get().Flush();
+
+        auto newWidth = std::max(1, width);
+        auto newHeight = std::max(1, height);
+
+        auto device = Application::Get().GetDevice();
+
+        // Resize screen dependent resources.
+        // Create a depth buffer.
+        D3D12_CLEAR_VALUE optimizedClearValue = {};
+        optimizedClearValue.Format = DXGI_FORMAT_D32_FLOAT;
+        optimizedClearValue.DepthStencil = { 1.0f, 0 };
+
+        auto heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+
+        auto textureDesc = CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_D32_FLOAT, width, height,
+            1, 0, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
+
+        ThrowIfFailed(device->CreateCommittedResource(
+            &heapProperties,
+            D3D12_HEAP_FLAG_NONE,
+            &textureDesc,
+            D3D12_RESOURCE_STATE_DEPTH_WRITE,
+            &optimizedClearValue,
+            IID_PPV_ARGS(&m_DepthBuffer)
+        ));
+
+        // Update the depth-stencil view.
+        D3D12_DEPTH_STENCIL_VIEW_DESC dsv = {};
+        dsv.Format = DXGI_FORMAT_D32_FLOAT;
+        dsv.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+        dsv.Texture2D.MipSlice = 0;
+        dsv.Flags = D3D12_DSV_FLAG_NONE;
+
+        device->CreateDepthStencilView(m_DepthBuffer.Get(), &dsv,
+            m_DSVHeap->GetCPUDescriptorHandleForHeapStart());
+    }
 }

@@ -142,6 +142,11 @@ ComPtr<ID3D12Device2> DDM::Application::GetDevice()
     return m_Device;
 }
 
+void DDM::Application::Flush()
+{
+    m_pCommandQueue->Flush();
+}
+
 // Convert the message ID into a MouseButton ID
 static MouseButtonEventArgs::MouseButton DecodeMouseButton(UINT messageID)
 {

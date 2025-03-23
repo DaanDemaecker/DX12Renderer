@@ -43,6 +43,8 @@ namespace DDM
 		CommandQueue* GetCommandQueue();
 
 		ComPtr<ID3D12Device2> GetDevice();
+
+		void Flush();
 	private:
 		std::wstring m_WindowClassName = L"DX12WindowClass";
 		
