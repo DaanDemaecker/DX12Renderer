@@ -199,6 +199,15 @@ void DDM::Tutorial2::OnMouseWheel(MouseWheelEventArgs& e)
 
 void DDM::Tutorial2::OnResize(ResizeEventArgs& e)
 {
+    if (e.Width != GetClientWidth() || e.Height != GetClientHeight())
+    {
+        Game::OnResize(e);
+
+        m_Viewport = CD3DX12_VIEWPORT(0.0f, 0.0f,
+            static_cast<float>(e.Width), static_cast<float>(e.Height));
+
+        ResizeDepthBuffer(e.Width, e.Height);
+    }
 }
 
 void DDM::Tutorial2::TransitionResource(ComPtr<ID3D12GraphicsCommandList2> commandList, ComPtr<ID3D12Resource> resource, D3D12_RESOURCE_STATES beforeState, D3D12_RESOURCE_STATES afterState)

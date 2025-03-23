@@ -73,6 +73,8 @@ void DDM::Game::OnMouseWheel(MouseWheelEventArgs& e)
 
 void DDM::Game::OnResize(ResizeEventArgs& e)
 {
+	m_Width = e.Width;
+	m_Height = e.Height;
 }
 
 void DDM::Game::OnWindowDestroy()
