@@ -46,7 +46,8 @@ bool DDM::Application::Initialize(HINSTANCE hInst)
 
     m_Device = CreateDevice(GetAdapter(m_UseWarp));
     
-    m_pCommandQueue = std::make_unique<DDM::CommandQueue>(m_Device, D3D12_COMMAND_LIST_TYPE_DIRECT);
+    m_pDirectCommandQueue = std::make_unique<DDM::CommandQueue>(m_Device, D3D12_COMMAND_LIST_TYPE_DIRECT);
+    m_pCopyCommandQueue = std::make_unique<DDM::CommandQueue>(m_Device, D3D12_COMMAND_LIST_TYPE_COPY);
 
     return true;
 }
@@ -68,7 +69,7 @@ int DDM::Application::Run(std::shared_ptr<Game> pGame)
         }
     }
 
-    m_pCommandQueue->Flush();
+    m_pDirectCommandQueue->Flush();
 
     pGame->UnloadContent();
     pGame->Destroy();
@@ -125,16 +126,27 @@ std::shared_ptr<DDM::Window> DDM::Application::CreateRenderWindow(const std::wst
 {
     gs_Window = std::make_shared<DDM::Window>(m_Device, m_WindowClassName, m_Instance, windowName, clientWidth, clientHeight, vsync);
 
-    gs_Window->CreateSwapchain(Application::Get().GetCommandQueue()->GetD3D12CommandQueue(), m_Device);
+    gs_Window->CreateSwapchain(Application::Get().GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT)->GetD3D12CommandQueue(), m_Device);
 
     gs_Window->ShowWindow();
 
     return gs_Window;
 }
 
-DDM::CommandQueue* DDM::Application::GetCommandQueue()
+DDM::CommandQueue* DDM::Application::GetCommandQueue(D3D12_COMMAND_LIST_TYPE type)
 {
-    return m_pCommandQueue.get();
+    switch (type)
+    {
+    case D3D12_COMMAND_LIST_TYPE_DIRECT:
+        return m_pDirectCommandQueue.get();
+        break;
+    case D3D12_COMMAND_LIST_TYPE_COPY:
+        return m_pCopyCommandQueue.get();
+        break;
+    }
+
+
+    return nullptr;
 }
 
 ComPtr<ID3D12Device2> DDM::Application::GetDevice()
@@ -144,7 +156,8 @@ ComPtr<ID3D12Device2> DDM::Application::GetDevice()
 
 void DDM::Application::Flush()
 {
-    m_pCommandQueue->Flush();
+    m_pDirectCommandQueue->Flush();
+    m_pCopyCommandQueue->Flush();
 }
 
 // Convert the message ID into a MouseButton ID

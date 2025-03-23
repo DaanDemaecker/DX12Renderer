@@ -44,7 +44,7 @@ void DDM::Window::Resize(uint32_t width, uint32_t height)
 
         // Flush the GPU queue to make sure the swap chain's back buffers
         // are not being referenced by an in-flight command list.
-        Application::Get().GetCommandQueue()->Flush();
+        Application::Get().Flush();
         
 
         for (int i = 0; i < BufferCount; ++i)
@@ -438,7 +438,7 @@ void DDM::Window::Present(Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList2> com
             D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
         commandList->ResourceBarrier(1, &barrier);
 
-        auto commandQueue = Application::Get().GetCommandQueue();
+        auto commandQueue = Application::Get().GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT);
 
         auto fenceValue = commandQueue->ExecuteCommandList(commandList);
 

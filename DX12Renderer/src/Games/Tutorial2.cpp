@@ -61,7 +61,7 @@ DDM::Tutorial2::Tutorial2(const std::wstring& name, int width, int height, bool 
 bool DDM::Tutorial2::LoadContent()
 {
     auto device = Application::Get().GetDevice();
-    auto commandQueue = Application::Get().GetCommandQueue();
+    auto commandQueue = Application::Get().GetCommandQueue(D3D12_COMMAND_LIST_TYPE_COPY);
     auto commandList = commandQueue->GetCommandList();
 
     // Upload vertex buffer data.

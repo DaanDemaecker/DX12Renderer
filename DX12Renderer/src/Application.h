@@ -40,7 +40,7 @@ namespace DDM
 
 		std::shared_ptr<Window> CreateRenderWindow(const std::wstring& windowName, int clientWidth, int clientHeight, bool vsync = true);
 
-		CommandQueue* GetCommandQueue();
+		CommandQueue* GetCommandQueue(D3D12_COMMAND_LIST_TYPE type);
 
 		ComPtr<ID3D12Device2> GetDevice();
 
@@ -56,7 +56,8 @@ namespace DDM
 		// DirectX 12 Objects
 		ComPtr<ID3D12Device2> m_Device;
 
-		std::unique_ptr<CommandQueue> m_pCommandQueue;
+		std::unique_ptr<CommandQueue> m_pDirectCommandQueue;
+		std::unique_ptr<CommandQueue> m_pCopyCommandQueue;
 
 		void ParseCommandLineArguments();
 
