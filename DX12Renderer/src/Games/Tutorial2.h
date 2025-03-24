@@ -6,10 +6,10 @@
 #define _TUTORIAL_2_
 
 // Parent include
-#include "Game.h"
+#include "Application/Game.h"
 
 // File includes
-#include "Window.h"
+#include "Application/Window.h"
 #include "Includes/DirectXIncludes.h"
 
 namespace DDM

@@ -1,6 +1,6 @@
 #include "TestGame1.h"
-#include "Application.h"
-#include "Window.h"
+#include "Application/Application.h"
+#include "Application/Window.h"
 
 DDM::TestGame1::TestGame1(const std::wstring& name, int width, int height, bool vSync)
 	:Game(name, width, height, vSync)

@@ -17,7 +17,7 @@ using namespace Microsoft::WRL;
 #include "Includes/DirectXIncludes.h"
 
 // File includes
-#include "Application.h"
+#include "Application/Application.h"
 #include "Games/Tutorial2.h"
 
 

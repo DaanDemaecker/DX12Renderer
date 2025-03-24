@@ -4,7 +4,7 @@
 #include "Tutorial2.h"
 
 // File includes
-#include "Application.h"
+#include "Application/Application.h"
 #include "Helpers/Helpers.h"
 
 // Standard library includes

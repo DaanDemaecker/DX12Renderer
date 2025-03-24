@@ -2,10 +2,10 @@ project(DX12Renderer)
 
 set(SRC_FILES
 "main.cpp"
-"Window.cpp"
-"Application.cpp"
-"CommandQueue.cpp"
-"Game.cpp"
+"Application/Window.cpp"
+"Application/Application.cpp"
+"Application/CommandQueue.cpp"
+"Application/Game.cpp"
 "Games/TestGame1.cpp"
 "Games/Tutorial2.cpp")
 
