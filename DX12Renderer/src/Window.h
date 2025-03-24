@@ -57,6 +57,8 @@ namespace DDM
 
 		ComPtr<ID3D12Resource>& GetCurrentBackBuffer() { return m_BackBuffers[m_CurrentBackBufferIndex]; }
 
+		D3D12_CPU_DESCRIPTOR_HANDLE GetCurrentRenderTargetView() const;
+
 		CD3DX12_CPU_DESCRIPTOR_HANDLE GetRTV();
 
 		void PresentSwapchain();
@@ -116,6 +118,7 @@ namespace DDM
 		*/
 		 void OnResize(ResizeEventArgs& e);;
 
+		UINT Present();
 
 	private:
 		// Window Handle
@@ -160,7 +163,6 @@ namespace DDM
 		void UpdateRenderTargetViews(ComPtr<ID3D12Device2> device,
 			ComPtr<IDXGISwapChain4> swapChain, ComPtr<ID3D12DescriptorHeap> descriptorHeap);
 
-		void Present(Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList2> commandList);
 	};
 }
 

@@ -85,6 +85,13 @@ void DDM::Window::SetCurrentBackBufferIndex()
     m_CurrentBackBufferIndex = m_SwapChain->GetCurrentBackBufferIndex();
 }
 
+D3D12_CPU_DESCRIPTOR_HANDLE DDM::Window::GetCurrentRenderTargetView() const
+{
+    return CD3DX12_CPU_DESCRIPTOR_HANDLE(m_RTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
+        m_CurrentBackBufferIndex, m_RTVDescriptorSize);
+
+}
+
 CD3DX12_CPU_DESCRIPTOR_HANDLE DDM::Window::GetRTV()
 {
     return CD3DX12_CPU_DESCRIPTOR_HANDLE(m_RTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
@@ -429,27 +436,14 @@ void DDM::Window::UpdateRenderTargetViews(ComPtr<ID3D12Device2> device, ComPtr<I
     }
 }
 
-void DDM::Window::Present(Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList2> commandList)
+UINT DDM::Window::Present()
 {
-    // Present
-    {
-        CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-            GetCurrentBackBuffer().Get(),
-            D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
-        commandList->ResourceBarrier(1, &barrier);
+    UINT syncInterval = m_VSync ? 1 : 0;
+    UINT presentFlags = m_TearingSupported && !m_VSync ? DXGI_PRESENT_ALLOW_TEARING : 0;
+    ThrowIfFailed(m_SwapChain->Present(syncInterval, presentFlags));
+    m_CurrentBackBufferIndex = m_SwapChain->GetCurrentBackBufferIndex();
 
-        auto commandQueue = Application::Get().GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT);
-
-        auto fenceValue = commandQueue->ExecuteCommandList(commandList);
-
-
-        PresentSwapchain();
-
-
-        SetCurrentBackBufferIndex();
-
-        commandQueue->WaitForFenceValue(fenceValue);
-    }
+    return m_CurrentBackBufferIndex;
 }
 
 

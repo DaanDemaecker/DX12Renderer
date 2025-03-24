@@ -203,9 +203,10 @@ void DDM::Tutorial2::OnUpdate(UpdateEventArgs& e)
     }
 
     // Update the model matrix.
-    float angle = static_cast<float>(e.TotalTime * 90.0);
-    const XMVECTOR rotationAxis = XMVectorSet(0, 1, 1, 0);
-    m_ModelMatrix = XMMatrixRotationAxis(rotationAxis, XMConvertToRadians(angle));
+    //float angle = static_cast<float>(e.TotalTime * 90.0);
+    //const XMVECTOR rotationAxis = XMVectorSet(0, 1, 1, 0);
+    //m_ModelMatrix = XMMatrixRotationAxis(rotationAxis, XMConvertToRadians(angle));
+    m_ModelMatrix = XMMatrixIdentity();
 
     // Update the view matrix.
     const XMVECTOR eyePosition = XMVectorSet(0, 0, -10, 1);
@@ -220,6 +221,57 @@ void DDM::Tutorial2::OnUpdate(UpdateEventArgs& e)
 
 void DDM::Tutorial2::OnRender(RenderEventArgs& e)
 {
+    Game::OnRender(e);
+
+    auto commandQueue = Application::Get().GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT);
+    auto commandList = commandQueue->GetCommandList();
+
+    UINT currentBackBufferIndex = m_pWindow->GetCurrentBackBufferIndex();
+    auto backBuffer = m_pWindow->GetCurrentBackBuffer();
+    auto rtv = m_pWindow->GetCurrentRenderTargetView();
+    auto dsv = m_DSVHeap->GetCPUDescriptorHandleForHeapStart();
+
+    // Clear the render targets.
+    {
+        TransitionResource(commandList, backBuffer,
+            D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+
+        FLOAT clearColor[] = { 0.4f, 0.6f, 0.9f, 1.0f };
+
+        ClearRTV(commandList, rtv, clearColor);
+        ClearDepth(commandList, dsv);
+    }
+
+    commandList->SetPipelineState(m_PipelineState.Get());
+    commandList->SetGraphicsRootSignature(m_RootSignature.Get());
+
+    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    commandList->IASetVertexBuffers(0, 1, &m_VertexBufferView);
+    commandList->IASetIndexBuffer(&m_IndexBufferView);
+
+    commandList->RSSetViewports(1, &m_Viewport);
+    commandList->RSSetScissorRects(1, &m_ScissorRect);
+
+    commandList->OMSetRenderTargets(1, &rtv, FALSE, &dsv);
+
+    // Update the MVP matrix
+    XMMATRIX mvpMatrix = XMMatrixMultiply(m_ModelMatrix, m_ViewMatrix);
+    mvpMatrix = XMMatrixMultiply(mvpMatrix, m_ProjectionMatrix);
+    commandList->SetGraphicsRoot32BitConstants(0, sizeof(XMMATRIX) / 4, &mvpMatrix, 0);
+
+    commandList->DrawIndexedInstanced(_countof(g_Indicies), 1, 0, 0, 0);
+
+    // Present
+    {
+        TransitionResource(commandList, backBuffer,
+            D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+
+        m_FenceValues[currentBackBufferIndex] = commandQueue->ExecuteCommandList(commandList);
+
+        currentBackBufferIndex = m_pWindow->Present();
+
+        commandQueue->WaitForFenceValue(m_FenceValues[currentBackBufferIndex]);
+    }
 }
 
 void DDM::Tutorial2::OnKeyPressed(KeyEventArgs& e)
