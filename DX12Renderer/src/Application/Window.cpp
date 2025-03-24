@@ -151,25 +151,6 @@ void DDM::Window::OnRender(RenderEventArgs&)
 
 void DDM::Window::OnKeyPressed(KeyEventArgs& e)
 {
-    switch (e.Key)
-    {
-    case KeyCode::V:
-        ToggleVsync();
-        break;
-    case VK_ESCAPE:
-        ::PostQuitMessage(0);
-        break;
-    case VK_RETURN:
-        if (e.Alt)
-        {
-            ToggleFullscreen();
-        }
-        break;
-    case KeyCode::F11:
-        ToggleFullscreen();
-        break;
-    }
-
     if (m_pGame)
     {
         m_pGame->OnKeyPressed(e);

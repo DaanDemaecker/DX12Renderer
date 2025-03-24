@@ -275,10 +275,33 @@ void DDM::Tutorial2::OnRender(RenderEventArgs& e)
 
 void DDM::Tutorial2::OnKeyPressed(KeyEventArgs& e)
 {
+    Game::OnKeyPressed(e);
+
+    switch (e.Key)
+    {
+    case KeyCode::Escape:
+        PostQuitMessage(0);
+        break;
+    case KeyCode::Enter:
+        if (e.Alt)
+        {
+            m_pWindow->ToggleFullscreen();
+        }
+    case KeyCode::F11:
+        m_pWindow->ToggleFullscreen();
+        break;
+    case KeyCode::V:
+        m_pWindow->ToggleVsync();
+        break;
+    }
 }
 
 void DDM::Tutorial2::OnMouseWheel(MouseWheelEventArgs& e)
 {
+    m_FoV -= e.WheelDelta;
+    m_FoV = std::clamp(m_FoV, 12.0f, 90.0f);
+
+    std::cout << "FOV: " << m_FoV << std::endl;
 }
 
 void DDM::Tutorial2::OnResize(ResizeEventArgs& e)
