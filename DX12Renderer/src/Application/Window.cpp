@@ -7,6 +7,7 @@
 #include "CommandQueue.h"
 #include "Application.h"
 #include "Game.h"
+#include "HighResClock.h"
 
 // Standard library includes
 #include <shellapi.h> // For CommandLineToArgvW
@@ -27,6 +28,9 @@ DDM::Window::Window(ComPtr<ID3D12Device2> device, const std::wstring& windowClas
     ::GetWindowRect(m_hWnd, &m_WindowRect);
 
     m_TearingSupported = CheckTearingSupport();
+
+    m_pUpdateClock = std::make_unique<DDM::HighResClock>();
+    m_pRenderClock = std::make_unique<DDM::HighResClock>();
 }
 
 DDM::Window::~Window()
@@ -123,65 +127,26 @@ void DDM::Window::UnRegisterGame(std::shared_ptr<Game> pGame)
     }
 }
 
-void DDM::Window::OnUpdate(UpdateEventArgs& e)
+void DDM::Window::OnUpdate(UpdateEventArgs&)
 {
-    static uint64_t frameCounter = 0;
-    static double elapsedSeconds = 0.0;
-    static std::chrono::high_resolution_clock clock;
-    static auto t0 = clock.now();
-
-    frameCounter++;
-    auto t1 = clock.now();
-    auto deltaTime = t1 - t0;
-    t0 = t1;
-    elapsedSeconds += deltaTime.count() * 1e-9;
-    if (elapsedSeconds > 1.0)
-    {
-        char buffer[500];
-        auto fps = frameCounter / elapsedSeconds;
-        sprintf_s(buffer, 500, "FPS: %f\n", fps);
-        OutputDebugString(buffer);
-
-        frameCounter = 0;
-        elapsedSeconds = 0.0;
-    }
-
-    e.ElapsedTime = elapsedSeconds;
+    m_pUpdateClock->Tick();
 
     if (m_pGame)
     {
-        m_pGame->OnUpdate(e);
+        UpdateEventArgs updateEventArgs(m_pUpdateClock->GetElapsedSec(), m_pUpdateClock->GetTotalTime());
+        m_pGame->OnUpdate(updateEventArgs);
     }
 }
 
-void DDM::Window::OnRender(RenderEventArgs& e)
+void DDM::Window::OnRender(RenderEventArgs&)
 {
-    //auto commandQueue = DDM::Application::Get().GetCommandQueue();
-
-
-    //auto commandList = commandQueue->GetCommandList();
-    //auto& backBuffer = GetCurrentBackBuffer();
-
-    //// Clear the render target.
-    //{
-    //    CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-    //        backBuffer.Get(),
-    //        D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
-
-    //    commandList->ResourceBarrier(1, &barrier);
-
-    //    FLOAT clearColor[] = { 0.4f, 0.6f, 0.9f, 1.0f };
-    //    CD3DX12_CPU_DESCRIPTOR_HANDLE rtv = GetRTV();
-
-    //    commandList->ClearRenderTargetView(rtv, clearColor, 0, nullptr);
-    //}
+    m_pRenderClock->Tick();
 
     if (m_pGame)
     {
-        m_pGame->OnRender(e);
+        RenderEventArgs renderEventArgs(m_pRenderClock->GetElapsedSec(), m_pRenderClock->GetTotalTime());
+        m_pGame->OnRender(renderEventArgs);
     }
-
-    //Present(commandList);
 }
 
 void DDM::Window::OnKeyPressed(KeyEventArgs& e)

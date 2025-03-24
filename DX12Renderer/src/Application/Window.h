@@ -22,6 +22,7 @@ using namespace Microsoft::WRL;
 namespace DDM
 {
 	class Game;
+	class HighResClock;
 
 	class Window
 	{
@@ -150,6 +151,10 @@ namespace DDM
 		UINT m_CurrentBackBufferIndex;
 		ComPtr<ID3D12DescriptorHeap> m_RTVDescriptorHeap;
 		UINT m_RTVDescriptorSize;
+
+		// Clocks
+		std::unique_ptr<HighResClock> m_pUpdateClock;
+		std::unique_ptr<HighResClock> m_pRenderClock;
 
 		void ParseCommandLineArgs();
 
