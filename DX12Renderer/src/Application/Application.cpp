@@ -9,7 +9,7 @@
 #include "Helpers/DirectXHelpers.h"
 #include "Events.h"
 #include "CommandQueue.h"
-#include "Game.h"
+#include "Games/Game.h"
 
 static std::shared_ptr<DDM::Window> gs_Window;
 

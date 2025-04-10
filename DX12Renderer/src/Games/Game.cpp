@@ -5,8 +5,8 @@
 
 // File includes
 #include "Includes/DirectXIncludes.h"
-#include "Application.h"
-#include "Window.h"
+#include "Application/Application.h"
+#include "Application/Window.h"
 
 DDM::Game::Game(const std::wstring& name, int width, int height, bool vSync)
 	:m_Name{name}, m_Width{width}, m_Height{height}, m_vSync{vSync}

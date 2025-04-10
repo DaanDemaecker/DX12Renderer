@@ -5,7 +5,7 @@
 #define TestGame1Included
 
 // File includes
-#include "Application/Game.h"
+#include "Games/Game.h"
 
 namespace DDM
 {

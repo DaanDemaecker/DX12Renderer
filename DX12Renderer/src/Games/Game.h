@@ -5,7 +5,7 @@
 #define GameIncluded
 
 // File includes
-#include "Events.h"
+#include "Application/Events.h"
 
 #include <memory> // for std::enabled_shared_from_this
 #include <string> // for std::wstring

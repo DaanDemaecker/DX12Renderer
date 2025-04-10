@@ -6,7 +6,7 @@
 #include "Helpers/DirectXHelpers.h"
 #include "CommandQueue.h"
 #include "Application.h"
-#include "Game.h"
+#include "Games/Game.h"
 #include "HighResClock.h"
 
 // Standard library includes

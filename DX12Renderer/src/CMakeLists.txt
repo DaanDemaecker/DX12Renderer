@@ -5,9 +5,9 @@ set(SRC_FILES
 "Application/Window.cpp"
 "Application/Application.cpp"
 "Application/CommandQueue.cpp"
-"Application/Game.cpp"
+"Games/Game.cpp"
 "Games/TestGame1.cpp"
-"Games/Tutorial2.cpp" "Application/HighResClock.h" "Application/HighResClock.cpp")
+"Games/Tutorial2.cpp" "Application/HighResClock.h" "Application/HighResClock.cpp" "Application/UploadBuffer.cpp")
 
 
 add_executable(DXRenderer ${SRC_FILES})
