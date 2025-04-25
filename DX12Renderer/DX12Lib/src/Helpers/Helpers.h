@@ -9,6 +9,16 @@
 #include <cstddef>  // for size_t
 #include <cstdint>  // optional
 
+// The min/max macros conflict with like-named member functions.
+// Only use std::min and std::max defined in <algorithm>.
+#if defined(min)
+#undef min
+#endif
+
+#if defined(max)
+#undef max
+#endif
+
 
 // From DXSampleHelper.h
 // Source: https://github.com/Microsoft/DirectX-Graphics-Samples
