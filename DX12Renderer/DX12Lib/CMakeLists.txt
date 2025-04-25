@@ -15,7 +15,8 @@ set(INC_FILES
     "src/Helpers/DirectXHelpers.h"
     "src/Helpers/Helpers.h"
     "src/Includes/DirectXIncludes.h"
- "src/Application/CommandList.h")
+ "src/Application/CommandList.h"
+ "src/Application/DescriptorAllocator/DescriptorAllocator.h")
 
 set(SRC_FILES
 "src/Application/Window.cpp"
@@ -25,7 +26,9 @@ set(SRC_FILES
 
 "src/Application/HighResClock.h"
 "src/Application/HighResClock.cpp"
-"src/Application/UploadBuffer.cpp" "src/Application/CommandList.cpp") 
+"src/Application/UploadBuffer.cpp"
+"src/Application/CommandList.cpp"
+ "src/Application/DescriptorAllocator/DescriptorAllocator.cpp") 
 
 
 add_library(DX12Lib ${SRC_FILES} ${INC_FILES})
