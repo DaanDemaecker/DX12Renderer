@@ -18,7 +18,7 @@ using namespace Microsoft::WRL;
 
 // File includes
 #include "Application/Application.h"
-#include "Tutorial2.h"
+
 
 
 void OpenConsole()
@@ -44,9 +44,9 @@ int CALLBACK WINAPI wWinMain(
     DDM::Application::Get().Initialize(hInstance);
 
     {
-        auto pGame = std::make_shared<DDM::Tutorial2>(L"DirectX tutorial 2", 1080, 720, true);
+        //auto pGame = std::make_shared<DDM::Tutorial2>(L"DirectX tutorial 2", 1080, 720, true);
 
-        DDM::Application::Get().Run(pGame);
+        //DDM::Application::Get().Run(pGame);
     }
 
     DDM::Application::Get().ShutDown();

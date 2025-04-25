@@ -10,22 +10,22 @@ set(INC_FILES
     "src/Application/UploadBuffer.h"
     "src/Application/Window.h"
     "src/Games/Game.h"
-    "src/Games/TestGame1.h"
+    
     "src/Helpers/Defines.h"
     "src/Helpers/DirectXHelpers.h"
     "src/Helpers/Helpers.h"
     "src/Includes/DirectXIncludes.h"
-)
+ "src/Application/CommandList.h")
 
 set(SRC_FILES
 "src/Application/Window.cpp"
 "src/Application/Application.cpp"
 "src/Application/CommandQueue.cpp"
 "src/Games/Game.cpp"
-"src/Games/TestGame1.cpp"
+
 "src/Application/HighResClock.h"
 "src/Application/HighResClock.cpp"
-"src/Application/UploadBuffer.cpp") 
+"src/Application/UploadBuffer.cpp" "src/Application/CommandList.cpp") 
 
 
 add_library(DX12Lib ${SRC_FILES} ${INC_FILES})

@@ -21,5 +21,6 @@ cmake_policy(SET CMP0079 NEW)
 # Add subdirectories for source, resources, and third-party dependencies
 add_subdirectory(DX12Lib)
 add_subdirectory(Tutorial2)
+add_subdirectory(Tutorial3)
 add_subdirectory(Resources)
 add_subdirectory(3rdParty)
