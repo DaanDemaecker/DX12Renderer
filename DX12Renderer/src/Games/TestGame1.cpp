@@ -5,8 +5,6 @@
 DDM::TestGame1::TestGame1(const std::wstring& name, int width, int height, bool vSync)
 	:Game(name, width, height, vSync)
 {
-	m_pWindow = Application::Get().CreateRenderWindow(name, width, height, vSync);
-	m_pWindow->RegisterGame(shared_from_this());
 }
 
 DDM::TestGame1::~TestGame1()

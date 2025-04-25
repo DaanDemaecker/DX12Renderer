@@ -121,6 +121,8 @@ namespace DDM
 
 		UINT Present();
 
+		void ClearGame();
+
 	private:
 		// Window Handle
 		HWND m_hWnd;

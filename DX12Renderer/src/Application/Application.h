@@ -36,6 +36,8 @@ namespace DDM
 		
 		bool Initialize(HINSTANCE hIns);
 
+		void ShutDown();
+
 		int Run(std::shared_ptr<Game> pGame);
 
 		std::shared_ptr<Window> CreateRenderWindow(const std::wstring& windowName, int clientWidth, int clientHeight, bool vsync = true);

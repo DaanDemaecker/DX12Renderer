@@ -287,6 +287,7 @@ void DDM::Tutorial2::OnKeyPressed(KeyEventArgs& e)
         {
             m_pWindow->ToggleFullscreen();
         }
+        break;
     case KeyCode::F11:
         m_pWindow->ToggleFullscreen();
         break;

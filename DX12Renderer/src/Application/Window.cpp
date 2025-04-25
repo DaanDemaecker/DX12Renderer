@@ -392,5 +392,10 @@ UINT DDM::Window::Present()
     return m_CurrentBackBufferIndex;
 }
 
+void DDM::Window::ClearGame()
+{
+    m_pGame = nullptr;
+}
+
 
 

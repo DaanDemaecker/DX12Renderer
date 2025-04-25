@@ -25,6 +25,12 @@ DDM::Application::~Application()
 {
     // Make sure the command queue has finished all commands before closing.
     //g_pFenceObject->CloseHandle(g_CommandQueue);
+
+    ComPtr<IDXGIDebug1> dxgiDebug;
+    if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&dxgiDebug))))
+    {
+        dxgiDebug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_DETAIL);
+    }
 }
 
 bool DDM::Application::Initialize(HINSTANCE hInst)
@@ -52,6 +58,15 @@ bool DDM::Application::Initialize(HINSTANCE hInst)
     return true;
 }
 
+void DDM::Application::ShutDown()
+{
+    DestroyWindow();
+    m_Device.Reset();
+    m_pDirectCommandQueue.reset();
+    m_pCopyCommandQueue.reset();
+
+}
+
 int DDM::Application::Run(std::shared_ptr<Game> pGame)
 {
     if (!pGame->Initialize()) return 1;
@@ -70,6 +85,7 @@ int DDM::Application::Run(std::shared_ptr<Game> pGame)
     }
 
     m_pDirectCommandQueue->Flush();
+    m_pCopyCommandQueue->Flush();
 
     pGame->UnloadContent();
     pGame->Destroy();
@@ -119,6 +135,7 @@ void DDM::Application::RegisterWindowClass(HINSTANCE hInst, const std::wstring& 
 
 void DDM::Application::DestroyWindow()
 {
+    gs_Window->ClearGame();
     gs_Window = nullptr;
 }
 

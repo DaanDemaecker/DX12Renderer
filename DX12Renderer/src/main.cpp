@@ -19,6 +19,7 @@ using namespace Microsoft::WRL;
 // File includes
 #include "Application/Application.h"
 #include "Games/Tutorial2.h"
+#include "Games/TestGame1.h"
 
 
 void OpenConsole()
@@ -49,6 +50,7 @@ int CALLBACK WINAPI wWinMain(
         DDM::Application::Get().Run(pGame);
     }
 
+    DDM::Application::Get().ShutDown();
 
     return 0;
 }

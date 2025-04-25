@@ -29,6 +29,7 @@ DDM::CommandQueue::CommandQueue(Microsoft::WRL::ComPtr<ID3D12Device2> device, D3
 
 DDM::CommandQueue::~CommandQueue()
 {
+
 }
 
 Microsoft::WRL::ComPtr<ID3D12CommandAllocator> DDM::CommandQueue::CreateCommandAllocator()
