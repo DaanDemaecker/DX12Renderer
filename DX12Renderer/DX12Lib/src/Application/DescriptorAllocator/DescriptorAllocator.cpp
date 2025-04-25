@@ -1,6 +1,7 @@
-#include "DescriptorAllocator.h"
-
 // DescriptorAllocator.cpp
+
+// Header include
+#include "DescriptorAllocator.h"
 
 DDM::DescriptorAllocator::DescriptorAllocator()
 {
