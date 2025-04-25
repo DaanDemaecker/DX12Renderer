@@ -15,10 +15,6 @@
 #include <dxgidebug.h>
 #include <DirectXMath.h>
 
-// D3D12 extension library
-
-#include "d3dx12.h"
-
 #pragma warning(pop)
 
 #endif DirectXIncluded

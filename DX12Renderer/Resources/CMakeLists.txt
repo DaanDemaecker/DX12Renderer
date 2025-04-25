@@ -51,4 +51,4 @@ endforeach()
 add_custom_target(compile_shaders DEPENDS ${COMPILED_SHADERS})
 
 # Ensure shaders are built before the main application
-add_dependencies(DXRenderer compile_shaders)
+add_dependencies(DX12Lib compile_shaders)

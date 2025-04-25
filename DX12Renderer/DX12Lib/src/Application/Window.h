@@ -4,7 +4,7 @@
 #define WIN_32_LEAN_AND_MEAN
 
 // File includes
-#include "Includes/DirectXIncludes.h"
+#include "../Includes/DirectXIncludes.h"
 #include "Events.h"
 
 // Standard library includes

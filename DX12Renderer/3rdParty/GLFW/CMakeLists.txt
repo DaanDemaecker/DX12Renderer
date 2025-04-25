@@ -15,4 +15,4 @@ option(GLFW_DOCUMENT_INTERNALS "Include internals in documentation" OFF)
 
 FetchContent_MakeAvailable(glfw)
 
-target_link_libraries(DXRenderer PRIVATE glfw)
+target_link_libraries(DX12Lib PRIVATE glfw)

@@ -16,11 +16,10 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin) # Output directory f
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin) # Output directory for executables (.EXE)
 
 # Handle CMake policies for better compatibility
-cmake_policy(SET CMP0079 NEW)
+cmake_policy(SET CMP0079 NEW) 
 
-# Include directories (optional but helpful for include paths)
-include_directories(${CMAKE_SOURCE_DIR}/include)
 # Add subdirectories for source, resources, and third-party dependencies
-add_subdirectory(src)
+add_subdirectory(DX12Lib)
+add_subdirectory(Tutorial2)
 add_subdirectory(Resources)
 add_subdirectory(3rdParty)

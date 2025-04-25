@@ -4,7 +4,7 @@
 #define ApplicationIncluded
 
 // File includes
-#include "Includes/DirectXIncludes.h"
+#include "../Includes/DirectXIncludes.h"
 #include "Singleton.h"
 #include "CommandQueue.h"
 

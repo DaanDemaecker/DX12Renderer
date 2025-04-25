@@ -18,7 +18,7 @@ using namespace Microsoft::WRL;
 
 // File includes
 #include "Application/Application.h"
-#include "Games/Tutorial2.h"
+#include "Tutorial2.h"
 #include "Games/TestGame1.h"
 
 

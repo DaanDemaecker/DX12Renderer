@@ -4,7 +4,7 @@
 #include "CommandQueue.h"
 
 // File includes
-#include "Helpers/Helpers.h"
+#include "../Helpers/Helpers.h"
 
 // Standard library includes
 #include <cassert>

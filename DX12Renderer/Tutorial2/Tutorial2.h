@@ -6,7 +6,7 @@
 #define _TUTORIAL_2_
 
 // Parent include
-	#include "Games/Game.h"
+#include "Games/Game.h"
 
 // File includes
 #include "Application/Window.h"
