@@ -135,7 +135,11 @@ void DDM::Application::RegisterWindowClass(HINSTANCE hInst, const std::wstring& 
 
 void DDM::Application::DestroyWindow()
 {
-    gs_Window->ClearGame();
+    if (gs_Window != nullptr)
+    {
+        gs_Window->ClearGame();
+    }
+
     gs_Window = nullptr;
 }
 

@@ -6,7 +6,7 @@
 // File includes
 #include "Helpers/Helpers.h"
 #include "Application/Application.h"
-//#include "ResourceStateTracker.h"
+#include "ResourceStateTracker.h"
 
 DDM::Resource::Resource(const std::wstring& name)
     : m_ResourceName(name)
@@ -33,7 +33,7 @@ DDM::Resource::Resource(const D3D12_RESOURCE_DESC& resourceDesc, const D3D12_CLE
         IID_PPV_ARGS(&m_d3d12Resource)
     ));
 
-    //ResourceStateTracker::AddGlobalResourceState(m_d3d12Resource.Get(), D3D12_RESOURCE_STATE_COMMON);
+    ResourceStateTracker::AddGlobalResourceState(m_d3d12Resource.Get(), D3D12_RESOURCE_STATE_COMMON);
 
     CheckFeatureSupport();
     SetName(name);

@@ -19,8 +19,6 @@ namespace DDM
 	public:
 		CommandList(D3D12_COMMAND_LIST_TYPE type);
 		virtual ~CommandList();
-		
-		~CommandList();
 
 		// Delete copy and move operations
 		CommandList(CommandList& other) = delete;
