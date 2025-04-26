@@ -2,7 +2,6 @@
 
 /**
 * Wrapper class for ID3D12CommandQueue
-
 */
 
 #ifndef CommandQueueIncluded
