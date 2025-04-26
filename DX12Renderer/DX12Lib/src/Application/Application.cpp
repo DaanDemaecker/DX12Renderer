@@ -177,6 +177,11 @@ void DDM::Application::Flush()
     m_pCopyCommandQueue->Flush();
 }
 
+uint32_t DDM::Application::GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE type)
+{
+    return m_Device->GetDescriptorHandleIncrementSize(type);
+}
+
 // Convert the message ID into a MouseButton ID
 static MouseButtonEventArgs::MouseButton DecodeMouseButton(UINT messageID)
 {

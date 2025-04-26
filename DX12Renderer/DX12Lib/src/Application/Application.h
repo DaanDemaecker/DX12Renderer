@@ -50,6 +50,8 @@ namespace DDM
 
 		UINT FrameCount() const { return m_FrameCount; }
 
+		uint32_t GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE type);
+
 	private:
 		// Number of frames in flight.
 		const UINT m_FrameCount = 3;
