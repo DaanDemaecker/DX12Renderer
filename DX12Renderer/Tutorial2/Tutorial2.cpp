@@ -56,6 +56,7 @@ DDM::Tutorial2::Tutorial2(const std::wstring& name, int width, int height, bool 
     m_FoV(45.0),
     m_ContentLoaded(false)
 {
+    m_FenceValues.resize(Application::Get().FrameCount());
 }
 
 bool DDM::Tutorial2::LoadContent()

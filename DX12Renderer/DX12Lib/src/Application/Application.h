@@ -47,7 +47,13 @@ namespace DDM
 		ComPtr<ID3D12Device2> GetDevice();
 
 		void Flush();
+
+		UINT FrameCount() const { return m_FrameCount; }
+
 	private:
+		// Number of frames in flight.
+		const UINT m_FrameCount = 3;
+
 		std::wstring m_WindowClassName = L"DX12WindowClass";
 		
 		HINSTANCE m_Instance = nullptr;

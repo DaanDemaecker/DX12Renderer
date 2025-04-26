@@ -78,7 +78,7 @@ namespace DDM
 		// Resize the depth buffer to match the size of the client area
 		void ResizeDepthBuffer(int width, int height);
 
-		uint64_t m_FenceValues[Window::BufferCount] = {};
+		std::vector<uint64_t> m_FenceValues = {};
 
 		// Vertex buffer for cube
 		ComPtr<ID3D12Resource> m_VertexBuffer;

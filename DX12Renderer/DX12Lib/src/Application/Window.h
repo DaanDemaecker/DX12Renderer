@@ -27,13 +27,10 @@ namespace DDM
 	class Window
 	{
 	public:
-		// Number of swapchain back buffers.
-		static const UINT BufferCount = 3;
-
 		Window() = delete;
 		Window(ComPtr<ID3D12Device2> device, const std::wstring& windowClassName, HINSTANCE hInst,
 			const std::wstring& windowTitle,
-			int clientWidth, int clientHeight, bool vsync);
+			int clientWidth, int clientHeight, bool vsync, UINT frameCount);
 		
 		~Window();
 
@@ -124,6 +121,9 @@ namespace DDM
 		void ClearGame();
 
 	private:
+		// Amount of frames in flight
+		UINT m_FrameCount;
+
 		// Window Handle
 		HWND m_hWnd;
 		// Window rectangle  (used to toggle fullscreen state)

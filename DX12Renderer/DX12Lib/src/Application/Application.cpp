@@ -141,7 +141,7 @@ void DDM::Application::DestroyWindow()
 
 std::shared_ptr<DDM::Window> DDM::Application::CreateRenderWindow(const std::wstring& windowName, int clientWidth, int clientHeight, bool vsync)
 {
-    gs_Window = std::make_shared<DDM::Window>(m_Device, m_WindowClassName, m_Instance, windowName, clientWidth, clientHeight, vsync);
+    gs_Window = std::make_shared<DDM::Window>(m_Device, m_WindowClassName, m_Instance, windowName, clientWidth, clientHeight, vsync, m_FrameCount);
 
     gs_Window->CreateSwapchain(Application::Get().GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT)->GetD3D12CommandQueue(), m_Device);
 
