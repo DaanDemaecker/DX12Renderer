@@ -1,12 +1,13 @@
 // Tutorial2.cpp
 
 // Header include
-#include "Tutorial2.h"
+#include "Tutorial3.h"
 
 // File includes
 #include "Application/Application.h"
 #include "Helpers/Helpers.h"
 #include "Application/CommandList.h"
+#include "Application/DataTypes/Structs.h"
 
 // Standard library includes
 #include <iostream> // For std::cout
@@ -51,12 +52,22 @@ static WORD g_Indicies[36] =
 
 
 DDM::Tutorial3::Tutorial3(const std::wstring& name, int width, int height, bool vSync)
-	:Game(name, width, height, vSync),
+    :Game(name, width, height, vSync),
     m_ScissorRect(CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX)),
     m_Viewport(CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height))),
     m_FoV(45.0),
     m_ContentLoaded(false)
 {
+    // Update the view matrix.
+    const XMVECTOR eyePosition = XMVectorSet(0, 0, -10, 1);
+    const XMVECTOR focusPoint = XMVectorSet(0, 0, 0, 1);
+    const XMVECTOR upDirection = XMVectorSet(0, 1, 0, 0);
+    m_ViewMatrix = XMMatrixLookAtLH(eyePosition, focusPoint, upDirection);
+
+    // Update the projection matrix.
+    float aspectRatio = GetClientWidth() / static_cast<float>(GetClientHeight());
+    m_ProjectionMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(m_FoV), aspectRatio, 0.1f, 100.0f);
+
     m_FenceValues.resize(Application::Get().FrameCount());
 }
 
@@ -67,27 +78,12 @@ bool DDM::Tutorial3::LoadContent()
     auto commandList = commandQueue->GetCommandList();
     auto d3dCommandList = commandList->GetGraphicsCommandList();
 
-    // Upload vertex buffer data.
-    ComPtr<ID3D12Resource> intermediateVertexBuffer;
-    UpdateBufferResource(d3dCommandList,
-        &m_VertexBuffer, &intermediateVertexBuffer,
-        _countof(g_Vertices), sizeof(VertexPosColor2), g_Vertices);
+    m_pMesh1 = Mesh::CreateCube(*commandList);
+    m_pMesh1->SetPosition(1.5f, 0, 0);
 
-    // Create the vertex buffer view.
-    m_VertexBufferView.BufferLocation = m_VertexBuffer->GetGPUVirtualAddress();
-    m_VertexBufferView.SizeInBytes = sizeof(g_Vertices);
-    m_VertexBufferView.StrideInBytes = sizeof(VertexPosColor2);
+    m_pMesh2 = Mesh::CreateCube(*commandList);
+    m_pMesh2->SetPosition(-1.5f, 0, 0);
 
-    // Upload index buffer data.
-    ComPtr<ID3D12Resource> intermediateIndexBuffer;
-    UpdateBufferResource(d3dCommandList,
-        &m_IndexBuffer, &intermediateIndexBuffer,
-        _countof(g_Indicies), sizeof(WORD), g_Indicies);
-
-    // Create index buffer view.
-    m_IndexBufferView.BufferLocation = m_IndexBuffer->GetGPUVirtualAddress();
-    m_IndexBufferView.Format = DXGI_FORMAT_R16_UINT;
-    m_IndexBufferView.SizeInBytes = sizeof(g_Indicies);
 
     // Create the descriptor heap for the depth-stencil view.
     D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {};
@@ -205,24 +201,6 @@ void DDM::Tutorial3::OnUpdate(UpdateEventArgs& e)
         totalTime = 0.0;
     }
 
-    // Update the model matrix.
-    float angle = static_cast<float>(e.TotalTime * 90.0);
-    const XMVECTOR rotationAxis = XMVectorSet(0, 1, 1, 0);
-    m_ModelMatrix = XMMatrixRotationAxis(rotationAxis, XMConvertToRadians(angle));
-
-    // Rotation vector
-    DirectX::XMVECTOR m_Rotation{ 0,0,0,0 };
-    // Position vector
-    DirectX::XMVECTOR m_Position{ 0,0,0,1 };
-    // Scale vector
-    DirectX::XMVECTOR m_Scale{ 1, 1, 1 };
-
-    XMMATRIX scaleMatrix = XMMatrixScalingFromVector(m_Scale);
-    XMMATRIX rotationMatrix = XMMatrixRotationRollPitchYawFromVector(m_Rotation);
-    XMMATRIX translationMatrix = XMMatrixTranslationFromVector(m_Position);
-
-    m_ModelMatrix = scaleMatrix * rotationMatrix * translationMatrix;
-
     // Update the view matrix.
     const XMVECTOR eyePosition = XMVectorSet(0, 0, -10, 1);
     const XMVECTOR focusPoint = XMVectorSet(0, 0, 0, 1);
@@ -261,21 +239,16 @@ void DDM::Tutorial3::OnRender(RenderEventArgs& e)
     d3dCommandList->SetPipelineState(m_PipelineState.Get());
     d3dCommandList->SetGraphicsRootSignature(m_RootSignature.Get());
 
-    d3dCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    d3dCommandList->IASetVertexBuffers(0, 1, &m_VertexBufferView);
-    d3dCommandList->IASetIndexBuffer(&m_IndexBufferView);
-
     d3dCommandList->RSSetViewports(1, &m_Viewport);
     d3dCommandList->RSSetScissorRects(1, &m_ScissorRect);
 
     d3dCommandList->OMSetRenderTargets(1, &rtv, FALSE, &dsv);
 
-    // Update the MVP matrix
-    XMMATRIX mvpMatrix = XMMatrixMultiply(m_ModelMatrix, m_ViewMatrix);
-    mvpMatrix = XMMatrixMultiply(mvpMatrix, m_ProjectionMatrix);
-    d3dCommandList->SetGraphicsRoot32BitConstants(0, sizeof(XMMATRIX) / 4, &mvpMatrix, 0);
 
-    d3dCommandList->DrawIndexedInstanced(_countof(g_Indicies), 1, 0, 0, 0);
+    m_pMesh1->Draw(*commandList, m_ViewMatrix, m_ProjectionMatrix);
+
+
+    m_pMesh2->Draw(*commandList, m_ViewMatrix, m_ProjectionMatrix);
 
     // Present
     {

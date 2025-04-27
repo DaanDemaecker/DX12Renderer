@@ -1,9 +1,9 @@
-// Tutorial2.h
+// Tutorial3.h
 
 // This game class is used for the DirectX12 tutorial
 
-#ifndef _TUTORIAL_2_
-#define _TUTORIAL_2_
+#ifndef _TUTORIAL_3_
+#define _TUTORIAL_3_
 
 // Parent include
 #include "Games/Game.h"
@@ -11,6 +11,7 @@
 // File includes
 #include "Application/Window.h"
 #include "Includes/DirectXIncludes.h"
+#include "Application/DataTypes/Mesh.h"
 
 namespace DDM
 {
@@ -26,10 +27,10 @@ namespace DDM
 		// Delete copy and move functions
 		Tutorial3(Tutorial3& other) = delete;
 		Tutorial3(Tutorial3&& other) = delete;
-		
+
 		Tutorial3& operator=(Tutorial3& other) = delete;
 		Tutorial3& operator=(Tutorial3&& other) = delete;
-		
+
 		// Load content required
 		virtual bool LoadContent() override;
 
@@ -80,13 +81,6 @@ namespace DDM
 
 		std::vector<uint64_t> m_FenceValues = {};
 
-		// Vertex buffer for cube
-		ComPtr<ID3D12Resource> m_VertexBuffer;
-		D3D12_VERTEX_BUFFER_VIEW m_VertexBufferView;
-		// Index buffer for the cube
-		ComPtr<ID3D12Resource> m_IndexBuffer;
-		D3D12_INDEX_BUFFER_VIEW m_IndexBufferView;
-
 		// Depth buffer
 		ComPtr<ID3D12Resource> m_DepthBuffer;
 		// Descriptor heap for depth buffer
@@ -103,7 +97,9 @@ namespace DDM
 
 		float m_FoV;
 
-		DirectX::XMMATRIX m_ModelMatrix;
+		std::unique_ptr<Mesh> m_pMesh1;
+		std::unique_ptr<Mesh> m_pMesh2;
+
 		DirectX::XMMATRIX m_ViewMatrix;
 		DirectX::XMMATRIX m_ProjectionMatrix;
 
@@ -112,4 +108,4 @@ namespace DDM
 }
 
 
-#endif // !_TUTORIAL_2_
+#endif // !_TUTORIAL_3_

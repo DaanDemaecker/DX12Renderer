@@ -10,4 +10,4 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(glm)
 
 
-target_link_libraries(DX12Lib PRIVATE glm::glm)
+target_link_libraries(DX12Lib PUBLIC glm::glm)

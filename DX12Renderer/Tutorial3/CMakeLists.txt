@@ -1,11 +1,11 @@
 project(DX12Renderer)
 
 set(INC_FILES
-)
+ "Tutorial3.h")
 
 set(SRC_FILES
 	"main.cpp"
-) 
+ "Tutorial3.cpp") 
 
 add_executable(Tutorial3 ${SRC_FILES} ${INC_FILES})
 
