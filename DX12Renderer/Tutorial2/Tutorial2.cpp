@@ -6,6 +6,7 @@
 // File includes
 #include "Application/Application.h"
 #include "Helpers/Helpers.h"
+#include "Application/CommandList.h"
 
 // Standard library includes
 #include <iostream> // For std::cout
@@ -64,10 +65,11 @@ bool DDM::Tutorial2::LoadContent()
     auto device = Application::Get().GetDevice();
     auto commandQueue = Application::Get().GetCommandQueue(D3D12_COMMAND_LIST_TYPE_COPY);
     auto commandList = commandQueue->GetCommandList();
+    auto d3dCommandList = commandList->GetGraphicsCommandList();
 
     // Upload vertex buffer data.
     ComPtr<ID3D12Resource> intermediateVertexBuffer;
-    UpdateBufferResource(commandList,
+    UpdateBufferResource(d3dCommandList,
         &m_VertexBuffer, &intermediateVertexBuffer,
         _countof(g_Vertices), sizeof(VertexPosColor), g_Vertices);
 
@@ -78,7 +80,7 @@ bool DDM::Tutorial2::LoadContent()
 
     // Upload index buffer data.
     ComPtr<ID3D12Resource> intermediateIndexBuffer;
-    UpdateBufferResource(commandList,
+    UpdateBufferResource(d3dCommandList,
         &m_IndexBuffer, &intermediateIndexBuffer,
         _countof(g_Indicies), sizeof(WORD), g_Indicies);
 
@@ -225,6 +227,7 @@ void DDM::Tutorial2::OnRender(RenderEventArgs& e)
 
     auto commandQueue = Application::Get().GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT);
     auto commandList = commandQueue->GetCommandList();
+    auto d3dCommandList = commandList->GetGraphicsCommandList();
 
     UINT currentBackBufferIndex = m_pWindow->GetCurrentBackBufferIndex();
     auto backBuffer = m_pWindow->GetCurrentBackBuffer();
@@ -233,37 +236,37 @@ void DDM::Tutorial2::OnRender(RenderEventArgs& e)
 
     // Clear the render targets.
     {
-        TransitionResource(commandList, backBuffer,
+        TransitionResource(d3dCommandList, backBuffer,
             D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
         FLOAT clearColor[] = { 0.4f, 0.6f, 0.9f, 1.0f };
 
-        ClearRTV(commandList, rtv, clearColor);
-        ClearDepth(commandList, dsv);
+        ClearRTV(d3dCommandList, rtv, clearColor);
+        ClearDepth(d3dCommandList, dsv);
     }
 
-    commandList->SetPipelineState(m_PipelineState.Get());
-    commandList->SetGraphicsRootSignature(m_RootSignature.Get());
+    d3dCommandList->SetPipelineState(m_PipelineState.Get());
+    d3dCommandList->SetGraphicsRootSignature(m_RootSignature.Get());
 
-    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    commandList->IASetVertexBuffers(0, 1, &m_VertexBufferView);
-    commandList->IASetIndexBuffer(&m_IndexBufferView);
+    d3dCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    d3dCommandList->IASetVertexBuffers(0, 1, &m_VertexBufferView);
+    d3dCommandList->IASetIndexBuffer(&m_IndexBufferView);
 
-    commandList->RSSetViewports(1, &m_Viewport);
-    commandList->RSSetScissorRects(1, &m_ScissorRect);
+    d3dCommandList->RSSetViewports(1, &m_Viewport);
+    d3dCommandList->RSSetScissorRects(1, &m_ScissorRect);
 
-    commandList->OMSetRenderTargets(1, &rtv, FALSE, &dsv);
+    d3dCommandList->OMSetRenderTargets(1, &rtv, FALSE, &dsv);
 
     // Update the MVP matrix
     XMMATRIX mvpMatrix = XMMatrixMultiply(m_ModelMatrix, m_ViewMatrix);
     mvpMatrix = XMMatrixMultiply(mvpMatrix, m_ProjectionMatrix);
-    commandList->SetGraphicsRoot32BitConstants(0, sizeof(XMMATRIX) / 4, &mvpMatrix, 0);
+    d3dCommandList->SetGraphicsRoot32BitConstants(0, sizeof(XMMATRIX) / 4, &mvpMatrix, 0);
 
-    commandList->DrawIndexedInstanced(_countof(g_Indicies), 1, 0, 0, 0);
+    d3dCommandList->DrawIndexedInstanced(_countof(g_Indicies), 1, 0, 0, 0);
 
     // Present
     {
-        TransitionResource(commandList, backBuffer,
+        TransitionResource(d3dCommandList, backBuffer,
             D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 
         m_FenceValues[currentBackBufferIndex] = commandQueue->ExecuteCommandList(commandList);

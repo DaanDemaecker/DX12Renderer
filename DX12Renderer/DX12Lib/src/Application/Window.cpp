@@ -51,7 +51,7 @@ void DDM::Window::Resize(uint32_t width, uint32_t height)
         Application::Get().Flush();
         
 
-        for (int i = 0; i < m_FrameCount; ++i)
+        for (uint32_t i = 0; i < m_FrameCount; ++i)
         {
             // Any references to the back buffers must be released
             // before the swap chain can be resized.
@@ -369,7 +369,7 @@ void DDM::Window::UpdateRenderTargetViews(ComPtr<ID3D12Device2> device, ComPtr<I
 
     CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(descriptorHeap->GetCPUDescriptorHandleForHeapStart());
 
-    for (int i = 0; i < m_FrameCount; ++i)
+    for (uint32_t i = 0; i < m_FrameCount; ++i)
     {
         ComPtr<ID3D12Resource> backBuffer;
         ThrowIfFailed(swapChain->GetBuffer(i, IID_PPV_ARGS(&backBuffer)));

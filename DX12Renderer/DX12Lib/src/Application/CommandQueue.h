@@ -12,9 +12,12 @@
 
 #include <cstdint>  // For uint64_t
 #include <queue>    // For std::queue
+#include <memory>	// for std::shared_ptr
 
 namespace DDM
 {
+	class CommandList;
+
 	class CommandQueue
 	{
 	public:
@@ -32,11 +35,11 @@ namespace DDM
 		CommandQueue& operator=(CommandQueue&& other) = delete;
 
 		 // Returns an available command list from the command queue
-		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList2> GetCommandList();
+		std::shared_ptr<CommandList> GetCommandList();
 
 		// Execute a command list
 		// Returns the fence value to wait for for this comand list
-		uint64_t ExecuteCommandList(Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList2> commandList);
+		uint64_t ExecuteCommandList(std::shared_ptr<CommandList> commandList);
 
 		uint64_t Signal();
 		bool IsFenceComplete(uint64_t fenceValue);
@@ -47,7 +50,7 @@ namespace DDM
 	
 	protected:
 		Microsoft::WRL::ComPtr<ID3D12CommandAllocator> CreateCommandAllocator();
-		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList2> CreateCommandList(Microsoft::WRL::ComPtr<ID3D12CommandAllocator> allocator);
+		std::shared_ptr<CommandList> CreateCommandList(Microsoft::WRL::ComPtr<ID3D12CommandAllocator> allocator);
 
 	private:
 		// Keep track of command allocators that are "in-flight"
@@ -58,7 +61,7 @@ namespace DDM
 		};
 
 		using CommandAllocatorQueue = std::queue<CommandAllocatorEntry>;
-		using CommandListQueue = std::queue<Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList2>>;
+		using CommandListQueue = std::queue<std::shared_ptr<CommandList>>;
 
 		D3D12_COMMAND_LIST_TYPE						m_CommandListType;
 		Microsoft::WRL::ComPtr<ID3D12Device2>		m_d3d12Device;

@@ -4,7 +4,8 @@
 #include "CommandQueue.h"
 
 // File includes
-#include "../Helpers/Helpers.h"
+#include "Helpers/Helpers.h"
+#include "CommandList.h"
 
 // Standard library includes
 #include <cassert>
@@ -40,18 +41,17 @@ Microsoft::WRL::ComPtr<ID3D12CommandAllocator> DDM::CommandQueue::CreateCommandA
 	return commandAllocator;
 }
 
-Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList2> DDM::CommandQueue::CreateCommandList(Microsoft::WRL::ComPtr<ID3D12CommandAllocator> allocator)
+std::shared_ptr<DDM::CommandList> DDM::CommandQueue::CreateCommandList(Microsoft::WRL::ComPtr<ID3D12CommandAllocator> allocator)
 {
-	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList2> commandList;
-	ThrowIfFailed(m_d3d12Device->CreateCommandList(0, m_CommandListType, allocator.Get(), nullptr, IID_PPV_ARGS(&commandList)));
+	auto commandList = std::make_shared<DDM::CommandList>(m_CommandListType);
 
 	return commandList;
 }
 
-Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList2> DDM::CommandQueue::GetCommandList()
+std::shared_ptr<DDM::CommandList> DDM::CommandQueue::GetCommandList()
 {
 	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> commandAllocator;
-	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList2> commandList;
+	std::shared_ptr<CommandList> commandList;
 
 	if (!m_CommandAllocatorQueue.empty() && IsFenceComplete(m_CommandAllocatorQueue.front().fenceValue))
 	{
@@ -70,7 +70,7 @@ Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList2> DDM::CommandQueue::GetCommand
 		commandList = m_CommandListQueue.front();
 		m_CommandListQueue.pop();
 
-		ThrowIfFailed(commandList->Reset(commandAllocator.Get(), nullptr));
+		ThrowIfFailed(commandList->GetGraphicsCommandList()->Reset(commandAllocator.Get(), nullptr));
 	}
 	else
 	{
@@ -79,22 +79,24 @@ Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList2> DDM::CommandQueue::GetCommand
 
 	// Associate the command allocator with the command list so that it can be
 	// retrieved when the command list is executed
-	ThrowIfFailed(commandList->SetPrivateDataInterface(__uuidof(ID3D12CommandAllocator), commandAllocator.Get()));
+	ThrowIfFailed(commandList->GetGraphicsCommandList()->SetPrivateDataInterface(__uuidof(ID3D12CommandAllocator), commandAllocator.Get()));
 
 	return commandList;
 
 }
 
-uint64_t DDM::CommandQueue::ExecuteCommandList(Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList2> commandList)
+uint64_t DDM::CommandQueue::ExecuteCommandList(std::shared_ptr<CommandList> commandList)
 {
-	commandList->Close();
+	auto d3dcommandList = commandList->GetGraphicsCommandList();
+
+	d3dcommandList->Close();
 
 	ID3D12CommandAllocator* commandAllocator;
 	UINT dataSize = sizeof(commandAllocator);
-	ThrowIfFailed(commandList->GetPrivateData(__uuidof(ID3D12CommandAllocator), &dataSize, &commandAllocator));
+	ThrowIfFailed(d3dcommandList->GetPrivateData(__uuidof(ID3D12CommandAllocator), &dataSize, &commandAllocator));
 
 	ID3D12CommandList* const ppCommandLists[] = {
-		commandList.Get()
+		d3dcommandList.Get()
 	};
 
 	m_d3d12CommandQueue->ExecuteCommandLists(1, ppCommandLists);
