@@ -12,7 +12,7 @@ using namespace Microsoft::WRL;
 
 DDM::Mesh::Mesh()
 {
-    std::cout << "Mesh created" << std::endl;
+
 }
 
 DDM::Mesh::~Mesh()

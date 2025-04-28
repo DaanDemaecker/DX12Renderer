@@ -210,19 +210,6 @@ void DDM::Tutorial3::OnUpdate(UpdateEventArgs& e)
     const XMVECTOR rotationAxis = XMVectorSet(0, 1, 1, 0);
     m_ModelMatrix = XMMatrixRotationAxis(rotationAxis, XMConvertToRadians(angle));
 
-    // Rotation vector
-    DirectX::XMVECTOR m_Rotation{ 0,0,0,0 };
-    // Position vector
-    DirectX::XMVECTOR m_Position{ 0,0,0,1 };
-    // Scale vector
-    DirectX::XMVECTOR m_Scale{ 1, 1, 1 };
-
-    XMMATRIX scaleMatrix = XMMatrixScalingFromVector(m_Scale);
-    XMMATRIX rotationMatrix = XMMatrixRotationRollPitchYawFromVector(m_Rotation);
-    XMMATRIX translationMatrix = XMMatrixTranslationFromVector(m_Position);
-
-    m_ModelMatrix = scaleMatrix * rotationMatrix * translationMatrix;
-
     // Update the view matrix.
     const XMVECTOR eyePosition = XMVectorSet(0, 0, -10, 1);
     const XMVECTOR focusPoint = XMVectorSet(0, 0, 0, 1);
