@@ -2,11 +2,11 @@ project(DX12Renderer)
 
 set(INC_FILES
 
-)
+ "RayTracingScene.h")
 
 set(SRC_FILES
 	"main.cpp"
-) 
+ "RayTracingScene.cpp") 
 
 add_executable(RayTracer ${SRC_FILES} ${INC_FILES})
 

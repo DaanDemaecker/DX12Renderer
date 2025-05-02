@@ -45,7 +45,7 @@ namespace DDM
 		/**
 		 * Get direct access to the ID3D12GraphicsCommandList2 interface.
 		 */
-		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList2> GetGraphicsCommandList() const
+		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> GetGraphicsCommandList() const
 		{
 			return m_d3d12CommandList;
 		}

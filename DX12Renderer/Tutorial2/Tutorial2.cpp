@@ -50,7 +50,7 @@ static WORD g_Indicies[36] =
 };
 
 
-DDM::Tutorial3::Tutorial3(const std::wstring& name, int width, int height, bool vSync)
+DDM::Tutorial2::Tutorial2(const std::wstring& name, int width, int height, bool vSync)
 	:Game(name, width, height, vSync),
     m_ScissorRect(CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX)),
     m_Viewport(CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height))),
@@ -60,7 +60,7 @@ DDM::Tutorial3::Tutorial3(const std::wstring& name, int width, int height, bool 
     m_FenceValues.resize(Application::Get().FrameCount());
 }
 
-bool DDM::Tutorial3::LoadContent()
+bool DDM::Tutorial2::LoadContent()
 {
     auto device = Application::Get().GetDevice();
     auto commandQueue = Application::Get().GetCommandQueue(D3D12_COMMAND_LIST_TYPE_COPY);
@@ -181,11 +181,11 @@ bool DDM::Tutorial3::LoadContent()
     return true;
 }
 
-void DDM::Tutorial3::UnloadContent()
+void DDM::Tutorial2::UnloadContent()
 {
 }
 
-void DDM::Tutorial3::OnUpdate(UpdateEventArgs& e)
+void DDM::Tutorial2::OnUpdate(UpdateEventArgs& e)
 {
     static uint64_t frameCount = 0;
     static double totalTime = 0.0;
@@ -221,7 +221,7 @@ void DDM::Tutorial3::OnUpdate(UpdateEventArgs& e)
     m_ProjectionMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(m_FoV), aspectRatio, 0.1f, 100.0f);
 }
 
-void DDM::Tutorial3::OnRender(RenderEventArgs& e)
+void DDM::Tutorial2::OnRender(RenderEventArgs& e)
 {
     Game::OnRender(e);
 
@@ -277,7 +277,7 @@ void DDM::Tutorial3::OnRender(RenderEventArgs& e)
     }
 }
 
-void DDM::Tutorial3::OnKeyPressed(KeyEventArgs& e)
+void DDM::Tutorial2::OnKeyPressed(KeyEventArgs& e)
 {
     Game::OnKeyPressed(e);
 
@@ -301,7 +301,7 @@ void DDM::Tutorial3::OnKeyPressed(KeyEventArgs& e)
     }
 }
 
-void DDM::Tutorial3::OnMouseWheel(MouseWheelEventArgs& e)
+void DDM::Tutorial2::OnMouseWheel(MouseWheelEventArgs& e)
 {
     m_FoV -= e.WheelDelta;
     m_FoV = std::clamp(m_FoV, 12.0f, 90.0f);
@@ -309,7 +309,7 @@ void DDM::Tutorial3::OnMouseWheel(MouseWheelEventArgs& e)
     std::cout << "FOV: " << m_FoV << std::endl;
 }
 
-void DDM::Tutorial3::OnResize(ResizeEventArgs& e)
+void DDM::Tutorial2::OnResize(ResizeEventArgs& e)
 {
     if (e.Width != GetClientWidth() || e.Height != GetClientHeight())
     {
@@ -322,7 +322,7 @@ void DDM::Tutorial3::OnResize(ResizeEventArgs& e)
     }
 }
 
-void DDM::Tutorial3::TransitionResource(ComPtr<ID3D12GraphicsCommandList2> commandList, ComPtr<ID3D12Resource> resource, D3D12_RESOURCE_STATES beforeState, D3D12_RESOURCE_STATES afterState)
+void DDM::Tutorial2::TransitionResource(ComPtr<ID3D12GraphicsCommandList2> commandList, ComPtr<ID3D12Resource> resource, D3D12_RESOURCE_STATES beforeState, D3D12_RESOURCE_STATES afterState)
 {
     CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
         resource.Get(),
@@ -331,17 +331,17 @@ void DDM::Tutorial3::TransitionResource(ComPtr<ID3D12GraphicsCommandList2> comma
     commandList->ResourceBarrier(1, &barrier);
 }
 
-void DDM::Tutorial3::ClearRTV(ComPtr<ID3D12GraphicsCommandList2> commandList, D3D12_CPU_DESCRIPTOR_HANDLE rtv, FLOAT* clearColor)
+void DDM::Tutorial2::ClearRTV(ComPtr<ID3D12GraphicsCommandList2> commandList, D3D12_CPU_DESCRIPTOR_HANDLE rtv, FLOAT* clearColor)
 {
     commandList->ClearRenderTargetView(rtv, clearColor, 0, nullptr);
 }
 
-void DDM::Tutorial3::ClearDepth(ComPtr<ID3D12GraphicsCommandList2> commandList, D3D12_CPU_DESCRIPTOR_HANDLE dsv, FLOAT depth)
+void DDM::Tutorial2::ClearDepth(ComPtr<ID3D12GraphicsCommandList2> commandList, D3D12_CPU_DESCRIPTOR_HANDLE dsv, FLOAT depth)
 {
     commandList->ClearDepthStencilView(dsv, D3D12_CLEAR_FLAG_DEPTH, depth, 0, 0, nullptr);
 }
 
-void DDM::Tutorial3::UpdateBufferResource(ComPtr<ID3D12GraphicsCommandList2> commandList, ID3D12Resource** pDestinationResource, ID3D12Resource** pIntermediateResource, size_t numElements, size_t elementSize, const void* bufferData, D3D12_RESOURCE_FLAGS flags)
+void DDM::Tutorial2::UpdateBufferResource(ComPtr<ID3D12GraphicsCommandList2> commandList, ID3D12Resource** pDestinationResource, ID3D12Resource** pIntermediateResource, size_t numElements, size_t elementSize, const void* bufferData, D3D12_RESOURCE_FLAGS flags)
 {
     auto device = DDM::Application::Get().GetDevice();
 
@@ -383,7 +383,7 @@ void DDM::Tutorial3::UpdateBufferResource(ComPtr<ID3D12GraphicsCommandList2> com
     }
 }
 
-void DDM::Tutorial3::ResizeDepthBuffer(int width, int height)
+void DDM::Tutorial2::ResizeDepthBuffer(int width, int height)
 {
     if (m_ContentLoaded)
     {

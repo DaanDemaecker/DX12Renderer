@@ -44,14 +44,15 @@ namespace DDM
 
 		CommandQueue* GetCommandQueue(D3D12_COMMAND_LIST_TYPE type);
 
-		ComPtr<ID3D12Device2> GetDevice();
+		ComPtr<ID3D12Device5> GetDevice();
 
 		void Flush();
 
 		UINT FrameCount() const { return m_FrameCount; }
 
 		uint32_t GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE type);
-
+		
+		void QueryRaytracingSupport();
 	private:
 		// Number of frames in flight.
 		const UINT m_FrameCount = 3;
@@ -64,7 +65,7 @@ namespace DDM
 		bool m_UseWarp = false;
 
 		// DirectX 12 Objects
-		ComPtr<ID3D12Device2> m_Device;
+		ComPtr<ID3D12Device5> m_Device;
 
 		std::unique_ptr<CommandQueue> m_pDirectCommandQueue;
 		std::unique_ptr<CommandQueue> m_pCopyCommandQueue;

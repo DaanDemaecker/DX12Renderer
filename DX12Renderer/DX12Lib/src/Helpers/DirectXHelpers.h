@@ -127,10 +127,10 @@ static ComPtr<IDXGIAdapter4> GetAdapter(bool useWarp)
     return dxgiAdapter4;
 }
 
-static ComPtr<ID3D12Device2> CreateDevice(ComPtr<IDXGIAdapter4> adapter)
+static ComPtr<ID3D12Device5> CreateDevice(ComPtr<IDXGIAdapter4> adapter)
 {
-    ComPtr<ID3D12Device2> d3d12Device2;
-    ThrowIfFailed(D3D12CreateDevice(adapter.Get(), D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&d3d12Device2)));
+    ComPtr<ID3D12Device5> d3d12Device5;
+    ThrowIfFailed(D3D12CreateDevice(adapter.Get(), D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&d3d12Device5)));
     HRESULT WINAPI D3D12CreateDevice(
         _In_opt_  IUnknown * pAdapter,
         D3D_FEATURE_LEVEL MinimumFeatureLevel,
@@ -140,7 +140,7 @@ static ComPtr<ID3D12Device2> CreateDevice(ComPtr<IDXGIAdapter4> adapter)
     // Enable debug messages in debug mode.
 #if defined(_DEBUG)
     ComPtr<ID3D12InfoQueue> pInfoQueue;
-    if (SUCCEEDED(d3d12Device2.As(&pInfoQueue)))
+    if (SUCCEEDED(d3d12Device5.As(&pInfoQueue)))
     {
         pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, TRUE);
         pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, TRUE);
@@ -174,7 +174,7 @@ static ComPtr<ID3D12Device2> CreateDevice(ComPtr<IDXGIAdapter4> adapter)
     }
 #endif
 
-    return d3d12Device2;
+    return d3d12Device5;
 }
 
 static void EnableDebugLayer()

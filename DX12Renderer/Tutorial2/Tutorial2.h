@@ -14,21 +14,21 @@
 
 namespace DDM
 {
-	class Tutorial3 : public Game
+	class Tutorial2 : public Game
 	{
 	public:
 		// Constructor
-		Tutorial3(const std::wstring& name, int width, int height, bool vSync = false);
+		Tutorial2(const std::wstring& name, int width, int height, bool vSync = false);
 
 		// Delete default constructor
-		Tutorial3() = delete;
+		Tutorial2() = delete;
 
 		// Delete copy and move functions
-		Tutorial3(Tutorial3& other) = delete;
-		Tutorial3(Tutorial3&& other) = delete;
+		Tutorial2(Tutorial2& other) = delete;
+		Tutorial2(Tutorial2&& other) = delete;
 		
-		Tutorial3& operator=(Tutorial3& other) = delete;
-		Tutorial3& operator=(Tutorial3&& other) = delete;
+		Tutorial2& operator=(Tutorial2& other) = delete;
+		Tutorial2& operator=(Tutorial2&& other) = delete;
 		
 		// Load content required
 		virtual bool LoadContent() override;

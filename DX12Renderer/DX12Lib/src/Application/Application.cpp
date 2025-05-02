@@ -170,7 +170,7 @@ DDM::CommandQueue* DDM::Application::GetCommandQueue(D3D12_COMMAND_LIST_TYPE typ
     return nullptr;
 }
 
-ComPtr<ID3D12Device2> DDM::Application::GetDevice()
+ComPtr<ID3D12Device5> DDM::Application::GetDevice()
 {
     return m_Device;
 }
@@ -184,6 +184,15 @@ void DDM::Application::Flush()
 uint32_t DDM::Application::GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE type)
 {
     return m_Device->GetDescriptorHandleIncrementSize(type);
+}
+
+void DDM::Application::QueryRaytracingSupport()
+{
+    D3D12_FEATURE_DATA_D3D12_OPTIONS5 options5 = {};
+    ThrowIfFailed(m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5,
+        &options5, sizeof(options5)));
+    if (options5.RaytracingTier < D3D12_RAYTRACING_TIER_1_0)
+        throw std::runtime_error("Raytracing not supported on device");
 }
 
 // Convert the message ID into a MouseButton ID
