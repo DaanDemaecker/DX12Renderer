@@ -13,30 +13,34 @@ message(STATUS "Found shaders: ${HLSL_FILES}")
 set(COMPILED_SHADERS)
 
 foreach(SHADER_FILE ${HLSL_FILES})
-    # Get shader filename without extension
     get_filename_component(SHADER_NAME ${SHADER_FILE} NAME_WE)
-
-    # Get relative path (to preserve folder structure in build output)
     get_filename_component(SHADER_PATH ${SHADER_FILE} DIRECTORY)
     file(RELATIVE_PATH REL_SHADER_PATH ${SHADERS_DIR} ${SHADER_PATH})
     set(COMPILED_SHADER_PATH "${CMAKE_BINARY_DIR}/bin/Resources/Shaders/${SHADER_NAME}.cso")
 
-    # Ensure output directory exists
-    file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/Resources/Shaders/${REL_SHADER_PATH}")
-
-
     if(SHADER_NAME MATCHES "_VS$")
-    set(SHADER_TYPE "vs_5_1")
-elseif(SHADER_NAME MATCHES "_PS$")
-    set(SHADER_TYPE "ps_5_1")
-elseif(SHADER_NAME MATCHES "CS$")
-    set(SHADER_TYPE "cs_5_1")
-else()
-    message(WARNING "Unknown shader type for ${SHADER_FILE}, defaulting to ps_5_1")
-    set(SHADER_TYPE "ps_5_1")
-endif()
+        set(SHADER_TYPE "vs_6_0")
+    elseif(SHADER_NAME MATCHES "_PS$")
+        set(SHADER_TYPE "ps_6_0")
+    elseif(SHADER_NAME MATCHES "_CS$")
+        set(SHADER_TYPE "cs_6_0")
+    elseif(SHADER_NAME MATCHES "_RGS$")
+        set(SHADER_TYPE "lib_6_3")
+    elseif(SHADER_NAME MATCHES "_MSS$")
+        set(SHADER_TYPE "lib_6_3")
+    elseif(SHADER_NAME MATCHES "_CHS$")
+        set(SHADER_TYPE "lib_6_3")
+    elseif(SHADER_NAME MATCHES "_AHS$")
+        set(SHADER_TYPE "lib_6_3")
+    elseif(SHADER_NAME MATCHES "_IS$")
+        set(SHADER_TYPE "lib_6_3")
+    elseif(SHADER_NAME MATCHES "_LIB$")
+        set(SHADER_TYPE "lib_6_3")
+    else()
+        message(WARNING "Unknown shader type for ${SHADER_FILE}, defaulting to ps_6_0")
+        set(SHADER_TYPE "ps_6_0")
+    endif()
 
-    # Compile the shader using DXC
     add_custom_command(
         OUTPUT ${COMPILED_SHADER_PATH}
         COMMAND dxc -T ${SHADER_TYPE} -E main -Fo ${COMPILED_SHADER_PATH} ${SHADER_FILE}
@@ -46,6 +50,7 @@ endif()
 
     list(APPEND COMPILED_SHADERS ${COMPILED_SHADER_PATH})
 endforeach()
+
 
 # Create a custom target to compile all shaders
 add_custom_target(compile_shaders DEPENDS ${COMPILED_SHADERS})
