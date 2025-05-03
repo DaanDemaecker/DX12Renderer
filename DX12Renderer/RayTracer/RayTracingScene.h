@@ -189,6 +189,11 @@ namespace DDM
 		void CreateShaderResourceHeap();
 		ComPtr<ID3D12Resource> m_outputResource;
 		ComPtr<ID3D12DescriptorHeap> m_srvUavHeap;
+
+		// #DXR
+		void CreateShaderBindingTable();
+		nv_helpers_dx12::ShaderBindingTableGenerator m_sbtHelper;
+		ComPtr<ID3D12Resource> m_sbtStorage;
 	};
 }
 #endif // !_RAY_TRACING_SCENE_

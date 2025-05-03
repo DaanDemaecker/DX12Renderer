@@ -11,6 +11,7 @@
 
 // Standard library includes
 #include <iostream> // For std::cout
+#include <cstdint>
 #include <algorithm> // For std::min and std::max.
 #if defined(min)
 #undef min
@@ -569,6 +570,12 @@ void DDM::RayTracingScene::SetupRaytracer()
     CreateAccelerationStructures(commandList);
 
     CreateRaytracingPipeline();
+
+    CreateRaytracingOutputBuffer();
+
+    CreateShaderResourceHeap();
+
+	CreateShaderBindingTable();
 }
 
 
@@ -914,4 +921,50 @@ void DDM::RayTracingScene::CreateShaderResourceHeap()
         m_topLevelASBuffers.pResult->GetGPUVirtualAddress();
     // Write the acceleration structure view in the heap
     m_Device->CreateShaderResourceView(nullptr, &srvDesc, srvHandle);
+}
+
+void DDM::RayTracingScene::CreateShaderBindingTable()
+{
+    // The SBT helper class collects calls to Add*Program.  If called several
+  // times, the helper must be emptied before re-adding shaders.
+    m_sbtHelper.Reset();
+
+    // The pointer to the beginning of the heap is the only parameter required by
+    // shaders without root parameters
+    D3D12_GPU_DESCRIPTOR_HANDLE srvUavHeapHandle =
+        m_srvUavHeap->GetGPUDescriptorHandleForHeapStart();
+
+    // The helper treats both root parameter pointers and heap pointers as void*,
+  // while DX12 uses the
+  // D3D12_GPU_DESCRIPTOR_HANDLE to define heap pointers. The pointer in this
+  // struct is a UINT64, which then has to be reinterpreted as a pointer.
+    auto heapPointer = static_cast<UINT64>(srvUavHeapHandle.ptr);
+
+    auto heapPointers = std::vector<void*>{ reinterpret_cast<void*>(heapPointer) };
+    // The ray generation only uses heap data
+    m_sbtHelper.AddRayGenerationProgram(L"RayGen", heapPointers);
+
+    // The miss and hit shaders do not access any external resources: instead they
+    // communicate their results through the ray payload
+    m_sbtHelper.AddMissProgram(L"Miss", {});
+
+    // Adding the triangle hit shader
+    m_sbtHelper.AddHitGroup(L"HitGroup", {});
+
+    // Compute the size of the SBT given the number of shaders and their
+  // parameters
+    uint32_t sbtSize = m_sbtHelper.ComputeSBTSize();
+
+    // Create the SBT on the upload heap. This is required as the helper will use
+    // mapping to write the SBT contents. After the SBT compilation it could be
+    // copied to the default heap for performance.
+    m_sbtStorage = nv_helpers_dx12::CreateBuffer(
+        m_Device.Get(), sbtSize, D3D12_RESOURCE_FLAG_NONE,
+        D3D12_RESOURCE_STATE_GENERIC_READ, nv_helpers_dx12::kUploadHeapProps);
+    if (!m_sbtStorage) {
+        throw std::logic_error("Could not allocate the shader binding table");
+    }
+
+    // Compile the SBT from the shader and parameters info
+    m_sbtHelper.Generate(m_sbtStorage.Get(), m_rtStateObjectProps.Get());
 }
