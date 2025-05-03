@@ -194,6 +194,8 @@ namespace DDM
 		void CreateShaderBindingTable();
 		nv_helpers_dx12::ShaderBindingTableGenerator m_sbtHelper;
 		ComPtr<ID3D12Resource> m_sbtStorage;
+
+		void PopulateRaytracingCommandlist(std::shared_ptr<CommandList> commandList);
 	};
 }
 #endif // !_RAY_TRACING_SCENE_
