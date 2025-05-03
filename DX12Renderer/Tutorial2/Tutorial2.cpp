@@ -39,7 +39,7 @@ static VertexPosColor2 g_Vertices[8] = {
     { XMFLOAT3(1.0f, -1.0f,  1.0f), XMFLOAT3(1.0f, 0.0f, 1.0f) }  // 7
 };
 
-static WORD g_Indicies[36] =
+static uint32_t g_Indicies[36] =
 {
     0, 1, 2, 0, 2, 3,
     4, 6, 5, 4, 7, 6,
@@ -82,7 +82,7 @@ bool DDM::Tutorial2::LoadContent()
     ComPtr<ID3D12Resource> intermediateIndexBuffer;
     UpdateBufferResource(d3dCommandList,
         &m_IndexBuffer, &intermediateIndexBuffer,
-        _countof(g_Indicies), sizeof(WORD), g_Indicies);
+        _countof(g_Indicies), sizeof(uint32_t), g_Indicies);
 
     // Create index buffer view.
     m_IndexBufferView.BufferLocation = m_IndexBuffer->GetGPUVirtualAddress();
