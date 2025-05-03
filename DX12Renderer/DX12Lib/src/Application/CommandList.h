@@ -9,6 +9,7 @@
 
 // Standard library includes
 #include <wrl.h>
+#include <vector>
 
 namespace DDM
 {
@@ -56,6 +57,7 @@ namespace DDM
 	 * Copy the contents to a vertex buffer in GPU memory.
 	 */
 		void CopyVertexBuffer(VertexBuffer& vertexBuffer, size_t numVertices, size_t vertexStride, const void* vertexBufferData);
+		
 		template<typename T>
 		void CopyVertexBuffer(VertexBuffer& vertexBuffer, const std::vector<T>& vertexBufferData)
 		{

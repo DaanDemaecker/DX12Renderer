@@ -5,13 +5,12 @@
 
 // File includes
 #include "Application/Application.h"
-#include "Helpers/Helpers.h"
+#include "Includes/DXRHelpersIncludes.h"
 #include "Application/UploadBuffer.h"
 #include "DynamicDescriptorHeap.h"
 #include "Buffers/Buffer.h"
 #include "Buffers/IndexBuffer.h"
 #include "Buffers/VertexBuffer.h"
-#include "Resources/ResourceStateTracker.h"
 #include "Resources/ResourceStateTracker.h"
 
 DDM::CommandList::CommandList(D3D12_COMMAND_LIST_TYPE type)

@@ -6,6 +6,7 @@
 // File includes
 #include "Application/Application.h"
 #include "Helpers/Helpers.h"
+#include "Includes/DXRHelpersIncludes.h"
 
 DDM::RootSignature::RootSignature()
     : m_RootSignatureDesc{}

@@ -6,6 +6,7 @@
 // File includes
 #include "Helpers/Helpers.h"
 #include "CommandList.h"
+#include "Includes/DXRHelpersIncludes.h"
 
 // Standard library includes
 #include <cassert>

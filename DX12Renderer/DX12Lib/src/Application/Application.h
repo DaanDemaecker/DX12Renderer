@@ -14,6 +14,7 @@
 #include <inttypes.h>
 #include <vector>
 #include <wrl.h> // For Microsoft::WRL::Comptr
+#include <string>
 using namespace Microsoft::WRL;
 
 namespace DDM

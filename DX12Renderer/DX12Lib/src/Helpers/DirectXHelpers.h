@@ -5,7 +5,7 @@
 #define NOMINMAX
 
 #include "Includes/DirectXIncludes.h"
-#include "Helpers/Helpers.h"
+#include "Includes/DXRHelpersIncludes.h"
 
 #include <chrono>
 #include <inttypes.h>

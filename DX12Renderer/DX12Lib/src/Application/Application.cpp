@@ -23,9 +23,6 @@ DDM::Application::Application()
 
 DDM::Application::~Application()
 {
-    // Make sure the command queue has finished all commands before closing.
-    //g_pFenceObject->CloseHandle(g_CommandQueue);
-
     ComPtr<IDXGIDebug1> dxgiDebug;
     if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&dxgiDebug))))
     {
@@ -62,6 +59,8 @@ void DDM::Application::ShutDown()
 {
     DestroyWindow();
     m_Device.Reset();
+    m_pDirectCommandQueue->Flush();
+    m_pCopyCommandQueue->Flush();
     m_pDirectCommandQueue.reset();
     m_pCopyCommandQueue.reset();
 

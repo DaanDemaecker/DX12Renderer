@@ -5,10 +5,21 @@
 
 // File includes
 #include "Application/Application.h"
-#include "Includes/DirectXIncludes.h"
-#include "Application/Window.h"
 #include "Helpers/Helpers.h"
 #include "Application/CommandList.h"
+
+// Standard library includes
+#include <iostream> // For std::cout
+#include <algorithm> // For std::min and std::max.
+#if defined(min)
+#undef min
+#endif
+
+#if defined(max)
+#undef max
+#endif
+
+using namespace DirectX;
 
 // Vertex data for a colored cube.
 struct VertexPosColor2
@@ -28,7 +39,7 @@ static VertexPosColor2 g_Vertices[8] = {
     { XMFLOAT3(1.0f, -1.0f,  1.0f), XMFLOAT3(1.0f, 0.0f, 1.0f) }  // 7
 };
 
-static WORD g_Indicies[36] =
+static uint32_t g_Indicies[36] =
 {
     0, 1, 2, 0, 2, 3,
     4, 6, 5, 4, 7, 6,
@@ -38,152 +49,685 @@ static WORD g_Indicies[36] =
     4, 0, 3, 4, 3, 7
 };
 
+
 DDM::RayTracingScene::RayTracingScene(const std::wstring& name, int width, int height, bool vSync)
-	:Game(name, width, height, vSync),
-	m_scissorRect(CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX)),
-	m_viewport(CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height)))
+    :Game(name, width, height, vSync),
+    m_ScissorRect(CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX)),
+    m_Viewport(CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height))),
+    m_FoV(45.0),
+    m_ContentLoaded(false)
 {
-	DDM::Application::Get().QueryRaytracingSupport();
+    m_FenceValues.resize(Application::Get().FrameCount());
 
-	m_renderTargets.resize(DDM::Application::Get().FrameCount());	
-
-    m_device = Application::Get().GetDevice();
+    m_CommandQueue = Application::Get().GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT);
 }
 
-// Load the sample assets.
 bool DDM::RayTracingScene::LoadContent()
 {
-	LoadAssets();
+    SetupRasterizer();
 
-	Application::Get().QueryRaytracingSupport();
+    SetupRaytracer();
 
-
-
-	return true;
+    return true;
 }
 
 void DDM::RayTracingScene::UnloadContent()
 {
+    auto device = Application::Get().GetDevice();
+    auto commandQueue = Application::Get().GetCommandQueue(D3D12_COMMAND_LIST_TYPE_COPY);
+    auto commandList = commandQueue->GetCommandList();
+    auto d3dCommandList = commandList->GetGraphicsCommandList();
+
+    // Upload vertex buffer data.
+    ComPtr<ID3D12Resource> intermediateVertexBuffer;
+    UpdateBufferResource(d3dCommandList,
+        &m_VertexBuffer, &intermediateVertexBuffer,
+        _countof(g_Vertices), sizeof(VertexPosColor2), g_Vertices);
+
+    // Create the vertex buffer view.
+    m_VertexBufferView.BufferLocation = m_VertexBuffer->GetGPUVirtualAddress();
+    m_VertexBufferView.SizeInBytes = sizeof(g_Vertices);
+    m_VertexBufferView.StrideInBytes = sizeof(VertexPosColor2);
+
+    // Upload index buffer data.
+    ComPtr<ID3D12Resource> intermediateIndexBuffer;
+    UpdateBufferResource(d3dCommandList,
+        &m_IndexBuffer, &intermediateIndexBuffer,
+        _countof(g_Indicies), sizeof(uint32_t), g_Indicies);
+
+    // Create index buffer view.
+    m_IndexBufferView.BufferLocation = m_IndexBuffer->GetGPUVirtualAddress();
+    m_IndexBufferView.Format = DXGI_FORMAT_R32_UINT;
+    m_IndexBufferView.SizeInBytes = sizeof(g_Indicies);
+
+    // Create the descriptor heap for the depth-stencil view.
+    D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {};
+    dsvHeapDesc.NumDescriptors = 1;
+    dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+    dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+    ThrowIfFailed(device->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&m_DSVHeap)));
+
+    // Load the vertex shader.
+    ComPtr<ID3DBlob> vertexShaderBlob;
+    ThrowIfFailed(D3DReadFileToBlob(L"Resources/Shaders/Default_VS.cso", &vertexShaderBlob));
+
+    // Load the pixel shader.
+    ComPtr<ID3DBlob> pixelShaderBlob;
+    ThrowIfFailed(D3DReadFileToBlob(L"Resources/Shaders/Default_PS.cso", &pixelShaderBlob));
+
+    // Create the vertex input layout
+    D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+    };
+
+    // Create a root signature.
+    D3D12_FEATURE_DATA_ROOT_SIGNATURE featureData = {};
+    featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_1;
+    if (FAILED(device->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &featureData, sizeof(featureData))))
+    {
+        featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0;
+    }
+
+    // Allow input layout and deny unnecessary access to certain pipeline stages.
+    D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags =
+        D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS |
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
+
+    // A single 32-bit constant root parameter that is used by the vertex shader.
+    CD3DX12_ROOT_PARAMETER1 rootParameters[1];
+    rootParameters[0].InitAsConstants(sizeof(XMMATRIX) / 4, 0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
+
+    CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDescription;
+    rootSignatureDescription.Init_1_1(_countof(rootParameters), rootParameters, 0, nullptr, rootSignatureFlags);
+
+    // Serialize the root signature.
+    ComPtr<ID3DBlob> rootSignatureBlob;
+    ComPtr<ID3DBlob> errorBlob;
+    ThrowIfFailed(D3DX12SerializeVersionedRootSignature(&rootSignatureDescription,
+        featureData.HighestVersion, &rootSignatureBlob, &errorBlob));
+    // Create the root signature.
+    ThrowIfFailed(device->CreateRootSignature(0, rootSignatureBlob->GetBufferPointer(),
+        rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&m_RootSignature)));
+
+    struct PipelineStateStream
+    {
+        CD3DX12_PIPELINE_STATE_STREAM_ROOT_SIGNATURE pRootSignature;
+        CD3DX12_PIPELINE_STATE_STREAM_INPUT_LAYOUT InputLayout;
+        CD3DX12_PIPELINE_STATE_STREAM_PRIMITIVE_TOPOLOGY PrimitiveTopologyType;
+        CD3DX12_PIPELINE_STATE_STREAM_VS VS;
+        CD3DX12_PIPELINE_STATE_STREAM_PS PS;
+        CD3DX12_PIPELINE_STATE_STREAM_DEPTH_STENCIL_FORMAT DSVFormat;
+        CD3DX12_PIPELINE_STATE_STREAM_RENDER_TARGET_FORMATS RTVFormats;
+    } pipelineStateStream;
+
+    D3D12_RT_FORMAT_ARRAY rtvFormats = {};
+    rtvFormats.NumRenderTargets = 1;
+    rtvFormats.RTFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+
+    pipelineStateStream.pRootSignature = m_RootSignature.Get();
+    pipelineStateStream.InputLayout = { inputLayout, _countof(inputLayout) };
+    pipelineStateStream.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+    pipelineStateStream.VS = CD3DX12_SHADER_BYTECODE(vertexShaderBlob.Get());
+    pipelineStateStream.PS = CD3DX12_SHADER_BYTECODE(pixelShaderBlob.Get());
+    pipelineStateStream.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+    pipelineStateStream.RTVFormats = rtvFormats;
+
+    D3D12_PIPELINE_STATE_STREAM_DESC pipelineStateStreamDesc = {
+        sizeof(PipelineStateStream), &pipelineStateStream
+    };
+    ThrowIfFailed(device->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&m_PipelineState)));
+
+    auto fenceValue = commandQueue->ExecuteCommandList(commandList);
+    commandQueue->WaitForFenceValue(fenceValue);
+
+    m_ContentLoaded = true;
+
+    // Resize/Create the depth buffer.
+    ResizeDepthBuffer(GetClientWidth(), GetClientHeight());
+}
+
+void DDM::RayTracingScene::OnUpdate(UpdateEventArgs& e)
+{
+    static uint64_t frameCount = 0;
+    static double totalTime = 0.0;
+
+    Game::OnUpdate(e);
+
+    totalTime += e.ElapsedTime;
+    frameCount++;
+
+    if (totalTime > 1.0)
+    {
+        double fps = frameCount / totalTime;
+
+        std::cout << "FPS: " << fps << std::endl;
+
+        frameCount = 0;
+        totalTime = 0.0;
+    }
+
+    // Update the model matrix.
+    float angle = static_cast<float>(e.TotalTime * 90.0);
+    const XMVECTOR rotationAxis = XMVectorSet(0, 1, 1, 0);
+    m_ModelMatrix = XMMatrixRotationAxis(rotationAxis, XMConvertToRadians(angle));
+
+    // Update the view matrix.
+    const XMVECTOR eyePosition = XMVectorSet(0, 0, -10, 1);
+    const XMVECTOR focusPoint = XMVectorSet(0, 0, 0, 1);
+    const XMVECTOR upDirection = XMVectorSet(0, 1, 0, 0);
+    m_ViewMatrix = XMMatrixLookAtLH(eyePosition, focusPoint, upDirection);
+
+    // Update the projection matrix.
+    float aspectRatio = GetClientWidth() / static_cast<float>(GetClientHeight());
+    m_ProjectionMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(m_FoV), aspectRatio, 0.1f, 100.0f);
 }
 
 void DDM::RayTracingScene::OnRender(RenderEventArgs& e)
 {
+    Game::OnRender(e);
 
+    auto commandQueue = Application::Get().GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT);
+    auto commandList = commandQueue->GetCommandList();
+    auto d3dCommandList = commandList->GetGraphicsCommandList();
+
+    UINT currentBackBufferIndex = m_pWindow->GetCurrentBackBufferIndex();
+    auto backBuffer = m_pWindow->GetCurrentBackBuffer();
+    auto rtv = m_pWindow->GetCurrentRenderTargetView();
+    auto dsv = m_DSVHeap->GetCPUDescriptorHandleForHeapStart();
+
+    // Clear the render targets.
+    {
+        TransitionResource(d3dCommandList, backBuffer,
+            D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+
+        FLOAT clearColor[] = { 0.4f, 0.6f, 0.9f, 1.0f };
+
+        ClearRTV(d3dCommandList, rtv, clearColor);
+        ClearDepth(d3dCommandList, dsv);
+    }
+
+    if (!m_UseRayTracing)
+    {
+        d3dCommandList->SetPipelineState(m_PipelineState.Get());
+        d3dCommandList->SetGraphicsRootSignature(m_RootSignature.Get());
+
+        d3dCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        d3dCommandList->IASetVertexBuffers(0, 1, &m_VertexBufferView);
+        d3dCommandList->IASetIndexBuffer(&m_IndexBufferView);
+
+        d3dCommandList->RSSetViewports(1, &m_Viewport);
+        d3dCommandList->RSSetScissorRects(1, &m_ScissorRect);
+
+        d3dCommandList->OMSetRenderTargets(1, &rtv, FALSE, &dsv);
+
+        // Update the MVP matrix
+        XMMATRIX mvpMatrix = XMMatrixMultiply(m_ModelMatrix, m_ViewMatrix);
+        mvpMatrix = XMMatrixMultiply(mvpMatrix, m_ProjectionMatrix);
+        d3dCommandList->SetGraphicsRoot32BitConstants(0, sizeof(XMMATRIX) / 4, &mvpMatrix, 0);
+
+        d3dCommandList->DrawIndexedInstanced(_countof(g_Indicies), 1, 0, 0, 0);
+    }
+    else
+    {
+
+    }
+
+    // Present
+    {
+        TransitionResource(d3dCommandList, backBuffer,
+            D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+
+        m_FenceValues[currentBackBufferIndex] = commandQueue->ExecuteCommandList(commandList);
+
+        currentBackBufferIndex = m_pWindow->Present();
+
+        commandQueue->WaitForFenceValue(m_FenceValues[currentBackBufferIndex]);
+    }
 }
 
-void DDM::RayTracingScene::LoadAssets()
+void DDM::RayTracingScene::OnKeyPressed(KeyEventArgs& e)
 {
+    Game::OnKeyPressed(e);
 
-    m_commandList = Application::Get().GetCommandQueue(D3D12_COMMAND_LIST_TYPE_COPY)->GetCommandList()->GetGraphicsCommandList();
-
-    // Create an empty root signature.
+    switch (e.Key)
     {
-        // #DXR Extra: Perspective Camera
-        // The root signature describes which data is accessed by the shader. The
-        // camera matrices are held in a constant buffer, itself referenced the
-        // heap. To do this we reference a range in the heap, and use that range as
-        // the sole parameter of the shader. The camera buffer is associated in the
-        // index 0, making it accessible in the shader in the b0 register.
-        CD3DX12_ROOT_PARAMETER constantParameter;
-        CD3DX12_DESCRIPTOR_RANGE range;
-        range.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0);
-        constantParameter.InitAsDescriptorTable(1, &range,
-            D3D12_SHADER_VISIBILITY_ALL);
+    case KeyCode::Escape:
+        PostQuitMessage(0);
+        break;
+    case KeyCode::Enter:
+        if (e.Alt)
+        {
+            m_pWindow->ToggleFullscreen();
+        }
+        break;
+    case KeyCode::F11:
+        m_pWindow->ToggleFullscreen();
+        break;
+    case KeyCode::V:
+        m_pWindow->ToggleVsync();
+        break;
+    case KeyCode::Space:
+        m_UseRayTracing = !m_UseRayTracing;
+        break;
+    }
+}
 
-        // #DXR Extra - Refitting
-        // Per-instance properties buffer
-        CD3DX12_ROOT_PARAMETER matricesParameter;
-        CD3DX12_DESCRIPTOR_RANGE matricesRange;
-        matricesRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1 /* desc count*/,
-            0 /*register*/, 0 /*space*/, 1 /*heap slot*/);
-        matricesParameter.InitAsDescriptorTable(1, &matricesRange,
-            D3D12_SHADER_VISIBILITY_ALL);
+void DDM::RayTracingScene::OnMouseWheel(MouseWheelEventArgs& e)
+{
+    m_FoV -= e.WheelDelta;
+    m_FoV = std::clamp(m_FoV, 12.0f, 90.0f);
 
-        // #DXR Extra - Refitting
-        // Per-instance properties index for the current geometry
-        CD3DX12_ROOT_PARAMETER indexParameter;
-        indexParameter.InitAsConstants(1 /*value count*/, 1 /*register*/);
+    std::cout << "FOV: " << m_FoV << std::endl;
+}
 
-        // #DXR Extra - Refitting
-        std::vector<CD3DX12_ROOT_PARAMETER> params = {
-            constantParameter, matricesParameter, indexParameter };
+void DDM::RayTracingScene::OnResize(ResizeEventArgs& e)
+{
+    if (e.Width != GetClientWidth() || e.Height != GetClientHeight())
+    {
+        Game::OnResize(e);
 
-        CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
-        rootSignatureDesc.Init(
-            static_cast<UINT>(params.size()), params.data(), 0, nullptr,
-            D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+        m_Viewport = CD3DX12_VIEWPORT(0.0f, 0.0f,
+            static_cast<float>(e.Width), static_cast<float>(e.Height));
 
-        ComPtr<ID3DBlob> signature;
-        ComPtr<ID3DBlob> error;
-        ThrowIfFailed(D3D12SerializeRootSignature(
-            &rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, &error));
-        ThrowIfFailed(m_device->CreateRootSignature(
-            0, signature->GetBufferPointer(), signature->GetBufferSize(),
-            IID_PPV_ARGS(&m_rootSignature)));
+        ResizeDepthBuffer(e.Width, e.Height);
+    }
+}
+
+void DDM::RayTracingScene::SetupRasterizer()
+{
+    auto device = Application::Get().GetDevice();
+    auto commandQueue = Application::Get().GetCommandQueue(D3D12_COMMAND_LIST_TYPE_COPY);
+    auto commandList = commandQueue->GetCommandList();
+    auto d3dCommandList = commandList->GetGraphicsCommandList();
+
+    // Upload vertex buffer data.
+    ComPtr<ID3D12Resource> intermediateVertexBuffer;
+    UpdateBufferResource(d3dCommandList,
+        &m_VertexBuffer, &intermediateVertexBuffer,
+        _countof(g_Vertices), sizeof(VertexPosColor2), g_Vertices);
+
+    // Create the vertex buffer view.
+    m_VertexBufferView.BufferLocation = m_VertexBuffer->GetGPUVirtualAddress();
+    m_VertexBufferView.SizeInBytes = sizeof(g_Vertices);
+    m_VertexBufferView.StrideInBytes = sizeof(VertexPosColor2);
+
+    // Upload index buffer data.
+    ComPtr<ID3D12Resource> intermediateIndexBuffer;
+    UpdateBufferResource(d3dCommandList,
+        &m_IndexBuffer, &intermediateIndexBuffer,
+        _countof(g_Indicies), sizeof(uint32_t), g_Indicies);
+
+    // Create index buffer view.
+    m_IndexBufferView.BufferLocation = m_IndexBuffer->GetGPUVirtualAddress();
+    m_IndexBufferView.Format = DXGI_FORMAT_R32_UINT;
+    m_IndexBufferView.SizeInBytes = sizeof(g_Indicies);
+
+    // Create the descriptor heap for the depth-stencil view.
+    D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {};
+    dsvHeapDesc.NumDescriptors = 1;
+    dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+    dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+    ThrowIfFailed(device->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&m_DSVHeap)));
+
+    // Load the vertex shader.
+    ComPtr<ID3DBlob> vertexShaderBlob;
+    ThrowIfFailed(D3DReadFileToBlob(L"Resources/Shaders/Default_VS.cso", &vertexShaderBlob));
+
+    // Load the pixel shader.
+    ComPtr<ID3DBlob> pixelShaderBlob;
+    ThrowIfFailed(D3DReadFileToBlob(L"Resources/Shaders/Default_PS.cso", &pixelShaderBlob));
+
+    // Create the vertex input layout
+    D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+    };
+
+    // Create a root signature.
+    D3D12_FEATURE_DATA_ROOT_SIGNATURE featureData = {};
+    featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_1;
+    if (FAILED(device->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &featureData, sizeof(featureData))))
+    {
+        featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0;
     }
 
+    // Allow input layout and deny unnecessary access to certain pipeline stages.
+    D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags =
+        D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS |
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
 
-    // Create the vertex buffer.
+    // A single 32-bit constant root parameter that is used by the vertex shader.
+    CD3DX12_ROOT_PARAMETER1 rootParameters[1];
+    rootParameters[0].InitAsConstants(sizeof(XMMATRIX) / 4, 0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
+
+    CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDescription;
+    rootSignatureDescription.Init_1_1(_countof(rootParameters), rootParameters, 0, nullptr, rootSignatureFlags);
+
+    // Serialize the root signature.
+    ComPtr<ID3DBlob> rootSignatureBlob;
+    ComPtr<ID3DBlob> errorBlob;
+    ThrowIfFailed(D3DX12SerializeVersionedRootSignature(&rootSignatureDescription,
+        featureData.HighestVersion, &rootSignatureBlob, &errorBlob));
+    // Create the root signature.
+    ThrowIfFailed(device->CreateRootSignature(0, rootSignatureBlob->GetBufferPointer(),
+        rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&m_RootSignature)));
+
+    struct PipelineStateStream
     {
+        CD3DX12_PIPELINE_STATE_STREAM_ROOT_SIGNATURE pRootSignature;
+        CD3DX12_PIPELINE_STATE_STREAM_INPUT_LAYOUT InputLayout;
+        CD3DX12_PIPELINE_STATE_STREAM_PRIMITIVE_TOPOLOGY PrimitiveTopologyType;
+        CD3DX12_PIPELINE_STATE_STREAM_VS VS;
+        CD3DX12_PIPELINE_STATE_STREAM_PS PS;
+        CD3DX12_PIPELINE_STATE_STREAM_DEPTH_STENCIL_FORMAT DSVFormat;
+        CD3DX12_PIPELINE_STATE_STREAM_RENDER_TARGET_FORMATS RTVFormats;
+    } pipelineStateStream;
 
-        const UINT vertexBufferSize = sizeof(g_Vertices);
+    D3D12_RT_FORMAT_ARRAY rtvFormats = {};
+    rtvFormats.NumRenderTargets = 1;
+    rtvFormats.RTFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
 
-        // Note: using upload heaps to transfer static data like vert buffers is not
-        // recommended. Every time the GPU needs it, the upload heap will be
-        // marshalled over. Please read up on Default Heap usage. An upload heap is
-        // used here for code simplicity and because there are very few verts to
-        // actually transfer.
+    pipelineStateStream.pRootSignature = m_RootSignature.Get();
+    pipelineStateStream.InputLayout = { inputLayout, _countof(inputLayout) };
+    pipelineStateStream.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+    pipelineStateStream.VS = CD3DX12_SHADER_BYTECODE(vertexShaderBlob.Get());
+    pipelineStateStream.PS = CD3DX12_SHADER_BYTECODE(pixelShaderBlob.Get());
+    pipelineStateStream.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+    pipelineStateStream.RTVFormats = rtvFormats;
 
-        auto heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
-        auto resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(vertexBufferSize);
+    D3D12_PIPELINE_STATE_STREAM_DESC pipelineStateStreamDesc = {
+        sizeof(PipelineStateStream), &pipelineStateStream
+    };
+    ThrowIfFailed(device->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&m_PipelineState)));
 
-        ThrowIfFailed(m_device->CreateCommittedResource(
+    auto fenceValue = commandQueue->ExecuteCommandList(commandList);
+    commandQueue->WaitForFenceValue(fenceValue);
+
+    m_ContentLoaded = true;
+
+    // Resize/Create the depth buffer.
+    ResizeDepthBuffer(GetClientWidth(), GetClientHeight());
+}
+
+void DDM::RayTracingScene::TransitionResource(ComPtr<ID3D12GraphicsCommandList2> commandList, ComPtr<ID3D12Resource> resource, D3D12_RESOURCE_STATES beforeState, D3D12_RESOURCE_STATES afterState)
+{
+    CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+        resource.Get(),
+        beforeState, afterState);
+
+    commandList->ResourceBarrier(1, &barrier);
+}
+
+void DDM::RayTracingScene::ClearRTV(ComPtr<ID3D12GraphicsCommandList2> commandList, D3D12_CPU_DESCRIPTOR_HANDLE rtv, FLOAT* clearColor)
+{
+    commandList->ClearRenderTargetView(rtv, clearColor, 0, nullptr);
+}
+
+void DDM::RayTracingScene::ClearDepth(ComPtr<ID3D12GraphicsCommandList2> commandList, D3D12_CPU_DESCRIPTOR_HANDLE dsv, FLOAT depth)
+{
+    commandList->ClearDepthStencilView(dsv, D3D12_CLEAR_FLAG_DEPTH, depth, 0, 0, nullptr);
+}
+
+void DDM::RayTracingScene::UpdateBufferResource(ComPtr<ID3D12GraphicsCommandList2> commandList, ID3D12Resource** pDestinationResource, ID3D12Resource** pIntermediateResource, size_t numElements, size_t elementSize, const void* bufferData, D3D12_RESOURCE_FLAGS flags)
+{
+    auto device = DDM::Application::Get().GetDevice();
+
+    size_t bufferSize = numElements * elementSize;
+
+    auto defaultHeapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+    auto bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(bufferSize, flags);
+
+    // Create a committed resource for the GPU resource in a default heap
+    ThrowIfFailed(device->CreateCommittedResource(
+        &defaultHeapProperties,
+        D3D12_HEAP_FLAG_NONE,
+        &bufferDesc,
+        D3D12_RESOURCE_STATE_COMMON,
+        nullptr,
+        IID_PPV_ARGS(pDestinationResource)));
+
+    if (bufferData)
+    {
+        auto uploadHeapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+        auto bufferDesc2 = CD3DX12_RESOURCE_DESC::Buffer(bufferSize);
+
+        ThrowIfFailed(device->CreateCommittedResource(
+            &uploadHeapProperties,
+            D3D12_HEAP_FLAG_NONE,
+            &bufferDesc2,
+            D3D12_RESOURCE_STATE_GENERIC_READ,
+            nullptr,
+            IID_PPV_ARGS(pIntermediateResource)));
+
+        D3D12_SUBRESOURCE_DATA subresourceData = {};
+        subresourceData.pData = bufferData;
+        subresourceData.RowPitch = bufferSize;
+        subresourceData.SlicePitch = subresourceData.RowPitch;
+
+        UpdateSubresources(commandList.Get(),
+            *pDestinationResource, *pIntermediateResource,
+            0, 0, 1, &subresourceData);
+    }
+}
+
+void DDM::RayTracingScene::ResizeDepthBuffer(int width, int height)
+{
+    if (m_ContentLoaded)
+    {
+        // Flush any GPU commands that might be referencing the depth buffer.
+        Application::Get().Flush();
+
+        auto newWidth = std::max(1, width);
+        auto newHeight = std::max(1, height);
+
+        auto device = Application::Get().GetDevice();
+
+        // Resize screen dependent resources.
+        // Create a depth buffer.
+        D3D12_CLEAR_VALUE optimizedClearValue = {};
+        optimizedClearValue.Format = DXGI_FORMAT_D32_FLOAT;
+        optimizedClearValue.DepthStencil = { 1.0f, 0 };
+
+        auto heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+
+        auto textureDesc = CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_D32_FLOAT, width, height,
+            1, 0, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
+
+        ThrowIfFailed(device->CreateCommittedResource(
             &heapProperties,
             D3D12_HEAP_FLAG_NONE,
-            &resourceDesc,
-            D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
-            IID_PPV_ARGS(&m_vertexBuffer)));
+            &textureDesc,
+            D3D12_RESOURCE_STATE_DEPTH_WRITE,
+            &optimizedClearValue,
+            IID_PPV_ARGS(&m_DepthBuffer)
+        ));
 
-        // Copy the triangle data to the vertex buffer.
-        UINT8* pVertexDataBegin;
-        CD3DX12_RANGE readRange(
-            0, 0); // We do not intend to read from this resource on the CPU.
-        ThrowIfFailed(m_vertexBuffer->Map(
-            0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin)));
-        memcpy(pVertexDataBegin, g_Vertices, sizeof(g_Vertices));
-        m_vertexBuffer->Unmap(0, nullptr);
+        // Update the depth-stencil view.
+        D3D12_DEPTH_STENCIL_VIEW_DESC dsv = {};
+        dsv.Format = DXGI_FORMAT_D32_FLOAT;
+        dsv.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+        dsv.Texture2D.MipSlice = 0;
+        dsv.Flags = D3D12_DSV_FLAG_NONE;
 
-        // Initialize the vertex buffer view.
-        m_vertexBufferView.BufferLocation = m_vertexBuffer->GetGPUVirtualAddress();
-        m_vertexBufferView.StrideInBytes = sizeof(VertexPosColor2);
-        m_vertexBufferView.SizeInBytes = vertexBufferSize;
-
-        //----------------------------------------------------------------------------------------------
-        // Indices
-
-
-        const UINT indexBufferSize =
-            static_cast<UINT>(sizeof(g_Indicies));
-
-        CD3DX12_HEAP_PROPERTIES heapProperty =
-            CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
-        CD3DX12_RESOURCE_DESC bufferResource =
-            CD3DX12_RESOURCE_DESC::Buffer(indexBufferSize);
-        ThrowIfFailed(m_device->CreateCommittedResource(
-            &heapProperty, D3D12_HEAP_FLAG_NONE, &bufferResource, //
-            D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
-            IID_PPV_ARGS(&m_indexBuffer)));
-
-        // Copy the triangle data to the index buffer.
-        UINT8* pIndexDataBegin;
-        ThrowIfFailed(m_indexBuffer->Map(
-            0, &readRange, reinterpret_cast<void**>(&pIndexDataBegin)));
-        memcpy(pIndexDataBegin, g_Indicies, indexBufferSize);
-        m_indexBuffer->Unmap(0, nullptr);
-
-        // Initialize the index buffer view.
-        m_indexBufferView.BufferLocation = m_indexBuffer->GetGPUVirtualAddress();
-        m_indexBufferView.Format = DXGI_FORMAT_R32_UINT;
-        m_indexBufferView.SizeInBytes = indexBufferSize;
+        device->CreateDepthStencilView(m_DepthBuffer.Get(), &dsv,
+            m_DSVHeap->GetCPUDescriptorHandleForHeapStart());
     }
+}
+
+void DDM::RayTracingScene::SetupRaytracer()
+{
+    auto commandList = m_CommandQueue->GetCommandList();
+
+    CreateAccelerationStructures(commandList);
+}
+
+
+//-----------------------------------------------------------------------------
+//
+// Create a bottom-level acceleration structure based on a list of vertex
+// buffers in GPU memory along with their vertex count. The build is then done
+// in 3 steps: gathering the geometry, computing the sizes of the required
+// buffers, and building the actual AS
+//
+DDM::RayTracingScene::AccelerationStructureBuffers DDM::RayTracingScene::CreateBottomLevelAS(
+    std::shared_ptr<CommandList> commandList,
+    std::vector<std::pair<ComPtr<ID3D12Resource>, uint32_t>> vVertexBuffers,
+    std::vector<std::pair<ComPtr<ID3D12Resource>, uint32_t>> vIndexBuffers)
+{
+    nv_helpers_dx12::BottomLevelASGenerator bottomLevelAS;
+
+    for (size_t i = 0; i < vVertexBuffers.size(); i++) {
+        if (i < vIndexBuffers.size() && vIndexBuffers[i].second > 0) {
+            bottomLevelAS.AddVertexBuffer(
+                vVertexBuffers[i].first.Get(), 0,
+                vVertexBuffers[i].second, sizeof(VertexPosColor2),
+                vIndexBuffers[i].first.Get(), 0,
+                vIndexBuffers[i].second, nullptr, 0, true);
+        }
+        else {
+            bottomLevelAS.AddVertexBuffer(
+                vVertexBuffers[i].first.Get(), 0,
+                vVertexBuffers[i].second, sizeof(VertexPosColor2), 0, 0);
+        }
+    }
+
+    UINT64 scratchSizeInBytes = 0;
+    UINT64 resultSizeInBytes = 0;
+
+    auto device = Application::Get().GetDevice();
+    bottomLevelAS.ComputeASBufferSizes(device.Get(), false, &scratchSizeInBytes, &resultSizeInBytes);
+
+    AccelerationStructureBuffers buffers;
+
+    // Create scratch buffer in COMMON state
+    buffers.pScratch = nv_helpers_dx12::CreateBuffer(
+        device.Get(), scratchSizeInBytes,
+        D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+        D3D12_RESOURCE_STATE_COMMON,
+        nv_helpers_dx12::kDefaultHeapProps);
+
+    // Create result buffer in COMMON state (no need to transition it manually)
+    buffers.pResult = nv_helpers_dx12::CreateBuffer(
+        device.Get(), resultSizeInBytes,
+        D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+        D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE,
+        nv_helpers_dx12::kDefaultHeapProps);
+
+    // Transition scratch buffer only
+    auto cmdList = commandList->GetGraphicsCommandList();
+    CD3DX12_RESOURCE_BARRIER scratchBarrier = CD3DX12_RESOURCE_BARRIER::Transition(
+        buffers.pScratch.Get(),
+        D3D12_RESOURCE_STATE_COMMON,
+        D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+    cmdList->ResourceBarrier(1, &scratchBarrier);
+
+    // Build BLAS - result buffer will internally go into the correct state
+    bottomLevelAS.Generate(
+        cmdList.Get(),
+        buffers.pScratch.Get(),
+        buffers.pResult.Get(),
+        false, nullptr);
+
+    return buffers;
+}
+
+
+
+//-----------------------------------------------------------------------------
+// Create the main acceleration structure that holds all instances of the scene.
+// Similarly to the bottom-level AS generation, it is done in 3 steps: gathering
+// the instances, computing the memory requirements for the AS, and building the
+// AS itself
+//
+void DDM::RayTracingScene::CreateTopLevelAS(std::shared_ptr<CommandList> commandList, const std::vector<std::pair<ComPtr<ID3D12Resource>, DirectX::XMMATRIX>>& instances, bool updateOnly)
+{
+    auto device = Application::Get().GetDevice();
+    auto d3dcommandList = commandList->GetGraphicsCommandList();
+
+    // Gather all the instances into the builder helper
+        for (size_t i = 0; i < instances.size(); i++) {
+            m_topLevelASGenerator.AddInstance(instances[i].first.Get(),
+                instances[i].second, static_cast<UINT>(i),
+                static_cast<UINT>(0));
+        }
+
+    // As for the bottom-level AS, the building the AS requires some scratch space
+    // to store temporary data in addition to the actual AS. In the case of the
+    // top-level AS, the instance descriptors also need to be stored in GPU
+    // memory. This call outputs the memory requirements for each (scratch,
+    // results, instance descriptors) so that the application can allocate the
+    // corresponding memory
+    UINT64 scratchSize, resultSize, instanceDescsSize;
+
+    m_topLevelASGenerator.ComputeASBufferSizes(device.Get(), true, &scratchSize,
+        &resultSize, &instanceDescsSize);
+
+    // Create the scratch and result buffers. Since the build is all done on GPU,
+    // those can be allocated on the default heap
+    m_topLevelASBuffers.pScratch = nv_helpers_dx12::CreateBuffer(
+        device.Get(), scratchSize, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+        D3D12_RESOURCE_STATE_COMMON,
+        nv_helpers_dx12::kDefaultHeapProps);
+
+    
+    auto commandList2 = m_CommandQueue->GetCommandList();
+    TransitionResource(commandList2->GetGraphicsCommandList(), m_topLevelASBuffers.pScratch, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+    auto fenceValue = m_CommandQueue->ExecuteCommandList(commandList2);
+    m_CommandQueue->WaitForFenceValue(fenceValue);
+
+
+    m_topLevelASBuffers.pResult = nv_helpers_dx12::CreateBuffer(
+        device.Get(), resultSize, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+        D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE,
+        nv_helpers_dx12::kDefaultHeapProps);
+
+
+    // The buffer describing the instances: ID, shader binding information,
+    // matrices ... Those will be copied into the buffer by the helper through
+    // mapping, so the buffer has to be allocated on the upload heap.
+    m_topLevelASBuffers.pInstanceDesc = nv_helpers_dx12::CreateBuffer(
+        device.Get(), instanceDescsSize, D3D12_RESOURCE_FLAG_NONE,
+        D3D12_RESOURCE_STATE_GENERIC_READ, nv_helpers_dx12::kUploadHeapProps);
+
+    // After all the buffers are allocated, or if only an update is required, we
+    // can build the acceleration structure. Note that in the case of the update
+    // we also pass the existing AS as the 'previous' AS, so that it can be
+    // refitted in place.
+    m_topLevelASGenerator.Generate(d3dcommandList.Get(),
+        m_topLevelASBuffers.pScratch.Get(),
+        m_topLevelASBuffers.pResult.Get(),
+        m_topLevelASBuffers.pInstanceDesc.Get());
+}
+
+//-----------------------------------------------------------------------------
+//
+// Combine the BLAS and TLAS builds to construct the entire acceleration
+// structure required to raytrace the scene
+//
+void DDM::RayTracingScene::CreateAccelerationStructures(std::shared_ptr<CommandList> commandList)
+{
+    // Build the bottom AS from the Triangle vertex buffer
+    AccelerationStructureBuffers bottomLevelBuffers =
+        CreateBottomLevelAS( commandList,{ {m_VertexBuffer.Get(), _countof(g_Vertices)}}, {{m_IndexBuffer.Get(), _countof(g_Indicies) } });
+
+    // Just one instance for now
+    m_instances = { {bottomLevelBuffers.pResult, XMMatrixIdentity()} };
+    CreateTopLevelAS(commandList, m_instances);
+
+    // Flush the command list and wait for it to finish
+    //commandList->GetGraphicsCommandList()->Close();
+    m_CommandQueue->ExecuteCommandList(commandList);
+    m_FenceValues[0] = m_CommandQueue->Signal();
+    m_CommandQueue->WaitForFenceValue(m_FenceValues[0]);
+
+    // Store the AS buffers. The rest of the buffers will be released once we exit
+    // the function
+    m_bottomLevelAS = bottomLevelBuffers.pResult;
 }

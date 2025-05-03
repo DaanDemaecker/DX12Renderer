@@ -27,7 +27,7 @@ set(INC_FILES
  "src/Includes/GlmIncludes.h"
  "src/Application/DataTypes/Structs.h"
  "src/Application/Buffers/Buffer.h"
- "src/Application/Buffers/IndexBuffer.h" "src/Application/Buffers/VertexBuffer.h")
+ "src/Application/Buffers/IndexBuffer.h" "src/Application/Buffers/VertexBuffer.h" "src/Includes/DXRHelpersIncludes.h")
 
 set(SRC_FILES
 "src/Application/Window.cpp"
@@ -57,15 +57,3 @@ add_library(DX12Lib ${SRC_FILES} ${INC_FILES})
 target_include_directories(DX12Lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 target_link_libraries(DX12Lib PUBLIC user32.lib kernel32.lib)
-
-# Copy resources after Shaders
-add_custom_target(copy_resources ALL)
-add_custom_command(
-    TARGET copy_resources POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:DX12Lib>/resources
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_SOURCE_DIR}/resources
-        $<TARGET_FILE_DIR:DX12Lib>/resources
-    MAIN_DEPENDENCY ${CMAKE_SOURCE_DIR}/resources
-    DEPENDS Shaders
-)

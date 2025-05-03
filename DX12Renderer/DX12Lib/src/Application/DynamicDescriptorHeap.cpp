@@ -7,7 +7,7 @@
 #include "Application/Application.h"
 #include "Application/CommandList.h"
 #include "Application/RootSignature.h"
-#include "Helpers/Helpers.h"
+#include "Includes/DXRHelpersIncludes.h"
 
 // Standare library includes
 #include <stdexcept>

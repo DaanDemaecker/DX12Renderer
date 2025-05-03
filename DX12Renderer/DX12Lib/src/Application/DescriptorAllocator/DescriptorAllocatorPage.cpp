@@ -5,7 +5,7 @@
 
 // File includes
 #include "Application/Application.h"
-#include "Helpers/Helpers.h"
+#include "Includes/DXRHelpersIncludes.h"
 
 DDM::DescriptorAllocatorPage::DescriptorAllocatorPage(D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t numDescriptors)
     : m_HeapType(type)

@@ -7,6 +7,7 @@
 #include "Includes/DirectXIncludes.h"
 #include "Application/Application.h"
 #include "Helpers/Helpers.h"
+#include "Includes/DXRHelpersIncludes.h"
 
 // standard library includes
 #include <new>

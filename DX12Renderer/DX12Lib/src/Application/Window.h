@@ -13,6 +13,8 @@
 #include <wrl.h> // For Microsoft::WRL::Comptr
 using namespace Microsoft::WRL;
 #include <vector>
+#include <string>
+#include <memory>
 
 // In order to define a function called CreateWindow, the Windows macro needs to be undifined
 #if defined(CreateWindow)

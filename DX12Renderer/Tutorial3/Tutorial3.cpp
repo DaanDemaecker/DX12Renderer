@@ -8,6 +8,8 @@
 #include "Helpers/Helpers.h"
 #include "Application/CommandList.h"
 #include "Application/DataTypes/Structs.h"
+#include "Includes/DXRHelpersIncludes.h"
+
 
 // Standard library includes
 #include <iostream> // For std::cout

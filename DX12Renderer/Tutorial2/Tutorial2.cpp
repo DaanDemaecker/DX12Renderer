@@ -5,7 +5,7 @@
 
 // File includes
 #include "Application/Application.h"
-#include "Helpers/Helpers.h"
+#include "Includes/DXRHelpersIncludes.h"
 #include "Application/CommandList.h"
 
 // Standard library includes
@@ -86,7 +86,7 @@ bool DDM::Tutorial2::LoadContent()
 
     // Create index buffer view.
     m_IndexBufferView.BufferLocation = m_IndexBuffer->GetGPUVirtualAddress();
-    m_IndexBufferView.Format = DXGI_FORMAT_R16_UINT;
+    m_IndexBufferView.Format = DXGI_FORMAT_R32_UINT;
     m_IndexBufferView.SizeInBytes = sizeof(g_Indicies);
 
     // Create the descriptor heap for the depth-stencil view.

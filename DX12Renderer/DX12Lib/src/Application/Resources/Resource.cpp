@@ -4,7 +4,7 @@
 #include "Resource.h"
 
 // File includes
-#include "Helpers/Helpers.h"
+#include "Includes/DXRHelpersIncludes.h"
 #include "Application/Application.h"
 #include "ResourceStateTracker.h"
 

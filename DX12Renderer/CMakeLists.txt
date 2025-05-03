@@ -25,3 +25,16 @@ add_subdirectory(Tutorial3)
 add_subdirectory(RayTracer)
 add_subdirectory(Resources)
 add_subdirectory(3rdParty)
+
+
+# Copy resources after Shaders
+add_custom_target(copy_resources ALL)
+add_custom_command(
+    TARGET copy_resources POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/Resources
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/Resources
+        ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Resources
+    MAIN_DEPENDENCY ${CMAKE_SOURCE_DIR}/Resources
+    DEPENDS compile_shaders
+)
