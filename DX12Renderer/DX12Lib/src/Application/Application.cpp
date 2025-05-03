@@ -5,7 +5,7 @@
 
 // File includes
 #include "Window.h" // For DDM::Window class
-#include "Helpers/Helpers.h"
+#include "Includes/DXRHelpersIncludes.h"
 #include "Helpers/DirectXHelpers.h"
 #include "Events.h"
 #include "CommandQueue.h"

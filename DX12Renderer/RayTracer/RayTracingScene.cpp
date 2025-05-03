@@ -7,6 +7,7 @@
 #include "Application/Application.h"
 #include "Helpers/Helpers.h"
 #include "Application/CommandList.h"
+#include "Includes/DXRHelpersIncludes.h"
 
 // Standard library includes
 #include <iostream> // For std::cout
@@ -60,6 +61,8 @@ DDM::RayTracingScene::RayTracingScene(const std::wstring& name, int width, int h
     m_FenceValues.resize(Application::Get().FrameCount());
 
     m_CommandQueue = Application::Get().GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT);
+
+    m_Device = Application::Get().GetDevice();
 }
 
 bool DDM::RayTracingScene::LoadContent()
@@ -73,7 +76,6 @@ bool DDM::RayTracingScene::LoadContent()
 
 void DDM::RayTracingScene::UnloadContent()
 {
-    auto device = Application::Get().GetDevice();
     auto commandQueue = Application::Get().GetCommandQueue(D3D12_COMMAND_LIST_TYPE_COPY);
     auto commandList = commandQueue->GetCommandList();
     auto d3dCommandList = commandList->GetGraphicsCommandList();
@@ -105,7 +107,7 @@ void DDM::RayTracingScene::UnloadContent()
     dsvHeapDesc.NumDescriptors = 1;
     dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
     dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-    ThrowIfFailed(device->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&m_DSVHeap)));
+    ThrowIfFailed(m_Device->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&m_DSVHeap)));
 
     // Load the vertex shader.
     ComPtr<ID3DBlob> vertexShaderBlob;
@@ -124,7 +126,7 @@ void DDM::RayTracingScene::UnloadContent()
     // Create a root signature.
     D3D12_FEATURE_DATA_ROOT_SIGNATURE featureData = {};
     featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_1;
-    if (FAILED(device->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &featureData, sizeof(featureData))))
+    if (FAILED(m_Device->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &featureData, sizeof(featureData))))
     {
         featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0;
     }
@@ -150,7 +152,7 @@ void DDM::RayTracingScene::UnloadContent()
     ThrowIfFailed(D3DX12SerializeVersionedRootSignature(&rootSignatureDescription,
         featureData.HighestVersion, &rootSignatureBlob, &errorBlob));
     // Create the root signature.
-    ThrowIfFailed(device->CreateRootSignature(0, rootSignatureBlob->GetBufferPointer(),
+    ThrowIfFailed(m_Device->CreateRootSignature(0, rootSignatureBlob->GetBufferPointer(),
         rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&m_RootSignature)));
 
     struct PipelineStateStream
@@ -179,7 +181,7 @@ void DDM::RayTracingScene::UnloadContent()
     D3D12_PIPELINE_STATE_STREAM_DESC pipelineStateStreamDesc = {
         sizeof(PipelineStateStream), &pipelineStateStream
     };
-    ThrowIfFailed(device->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&m_PipelineState)));
+    ThrowIfFailed(m_Device->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&m_PipelineState)));
 
     auto fenceValue = commandQueue->ExecuteCommandList(commandList);
     commandQueue->WaitForFenceValue(fenceValue);
@@ -339,7 +341,6 @@ void DDM::RayTracingScene::OnResize(ResizeEventArgs& e)
 
 void DDM::RayTracingScene::SetupRasterizer()
 {
-    auto device = Application::Get().GetDevice();
     auto commandQueue = Application::Get().GetCommandQueue(D3D12_COMMAND_LIST_TYPE_COPY);
     auto commandList = commandQueue->GetCommandList();
     auto d3dCommandList = commandList->GetGraphicsCommandList();
@@ -371,7 +372,7 @@ void DDM::RayTracingScene::SetupRasterizer()
     dsvHeapDesc.NumDescriptors = 1;
     dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
     dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-    ThrowIfFailed(device->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&m_DSVHeap)));
+    ThrowIfFailed(m_Device->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&m_DSVHeap)));
 
     // Load the vertex shader.
     ComPtr<ID3DBlob> vertexShaderBlob;
@@ -390,7 +391,7 @@ void DDM::RayTracingScene::SetupRasterizer()
     // Create a root signature.
     D3D12_FEATURE_DATA_ROOT_SIGNATURE featureData = {};
     featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_1;
-    if (FAILED(device->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &featureData, sizeof(featureData))))
+    if (FAILED(m_Device->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &featureData, sizeof(featureData))))
     {
         featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0;
     }
@@ -416,7 +417,7 @@ void DDM::RayTracingScene::SetupRasterizer()
     ThrowIfFailed(D3DX12SerializeVersionedRootSignature(&rootSignatureDescription,
         featureData.HighestVersion, &rootSignatureBlob, &errorBlob));
     // Create the root signature.
-    ThrowIfFailed(device->CreateRootSignature(0, rootSignatureBlob->GetBufferPointer(),
+    ThrowIfFailed(m_Device->CreateRootSignature(0, rootSignatureBlob->GetBufferPointer(),
         rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&m_RootSignature)));
 
     struct PipelineStateStream
@@ -445,7 +446,7 @@ void DDM::RayTracingScene::SetupRasterizer()
     D3D12_PIPELINE_STATE_STREAM_DESC pipelineStateStreamDesc = {
         sizeof(PipelineStateStream), &pipelineStateStream
     };
-    ThrowIfFailed(device->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&m_PipelineState)));
+    ThrowIfFailed(m_Device->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&m_PipelineState)));
 
     auto fenceValue = commandQueue->ExecuteCommandList(commandList);
     commandQueue->WaitForFenceValue(fenceValue);
@@ -566,6 +567,8 @@ void DDM::RayTracingScene::SetupRaytracer()
     auto commandList = m_CommandQueue->GetCommandList();
 
     CreateAccelerationStructures(commandList);
+
+    CreateRaytracingPipeline();
 }
 
 
@@ -601,21 +604,20 @@ DDM::RayTracingScene::AccelerationStructureBuffers DDM::RayTracingScene::CreateB
     UINT64 scratchSizeInBytes = 0;
     UINT64 resultSizeInBytes = 0;
 
-    auto device = Application::Get().GetDevice();
-    bottomLevelAS.ComputeASBufferSizes(device.Get(), false, &scratchSizeInBytes, &resultSizeInBytes);
+    bottomLevelAS.ComputeASBufferSizes(m_Device.Get(), false, &scratchSizeInBytes, &resultSizeInBytes);
 
     AccelerationStructureBuffers buffers;
 
     // Create scratch buffer in COMMON state
     buffers.pScratch = nv_helpers_dx12::CreateBuffer(
-        device.Get(), scratchSizeInBytes,
+        m_Device.Get(), scratchSizeInBytes,
         D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
         D3D12_RESOURCE_STATE_COMMON,
         nv_helpers_dx12::kDefaultHeapProps);
 
     // Create result buffer in COMMON state (no need to transition it manually)
     buffers.pResult = nv_helpers_dx12::CreateBuffer(
-        device.Get(), resultSizeInBytes,
+        m_Device.Get(), resultSizeInBytes,
         D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
         D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE,
         nv_helpers_dx12::kDefaultHeapProps);
@@ -648,7 +650,6 @@ DDM::RayTracingScene::AccelerationStructureBuffers DDM::RayTracingScene::CreateB
 //
 void DDM::RayTracingScene::CreateTopLevelAS(std::shared_ptr<CommandList> commandList, const std::vector<std::pair<ComPtr<ID3D12Resource>, DirectX::XMMATRIX>>& instances, bool updateOnly)
 {
-    auto device = Application::Get().GetDevice();
     auto d3dcommandList = commandList->GetGraphicsCommandList();
 
     // Gather all the instances into the builder helper
@@ -666,13 +667,13 @@ void DDM::RayTracingScene::CreateTopLevelAS(std::shared_ptr<CommandList> command
     // corresponding memory
     UINT64 scratchSize, resultSize, instanceDescsSize;
 
-    m_topLevelASGenerator.ComputeASBufferSizes(device.Get(), true, &scratchSize,
+    m_topLevelASGenerator.ComputeASBufferSizes(m_Device.Get(), true, &scratchSize,
         &resultSize, &instanceDescsSize);
 
     // Create the scratch and result buffers. Since the build is all done on GPU,
     // those can be allocated on the default heap
     m_topLevelASBuffers.pScratch = nv_helpers_dx12::CreateBuffer(
-        device.Get(), scratchSize, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+        m_Device.Get(), scratchSize, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
         D3D12_RESOURCE_STATE_COMMON,
         nv_helpers_dx12::kDefaultHeapProps);
 
@@ -684,7 +685,7 @@ void DDM::RayTracingScene::CreateTopLevelAS(std::shared_ptr<CommandList> command
 
 
     m_topLevelASBuffers.pResult = nv_helpers_dx12::CreateBuffer(
-        device.Get(), resultSize, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+        m_Device.Get(), resultSize, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
         D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE,
         nv_helpers_dx12::kDefaultHeapProps);
 
@@ -693,7 +694,7 @@ void DDM::RayTracingScene::CreateTopLevelAS(std::shared_ptr<CommandList> command
     // matrices ... Those will be copied into the buffer by the helper through
     // mapping, so the buffer has to be allocated on the upload heap.
     m_topLevelASBuffers.pInstanceDesc = nv_helpers_dx12::CreateBuffer(
-        device.Get(), instanceDescsSize, D3D12_RESOURCE_FLAG_NONE,
+        m_Device.Get(), instanceDescsSize, D3D12_RESOURCE_FLAG_NONE,
         D3D12_RESOURCE_STATE_GENERIC_READ, nv_helpers_dx12::kUploadHeapProps);
 
     // After all the buffers are allocated, or if only an update is required, we
@@ -730,4 +731,187 @@ void DDM::RayTracingScene::CreateAccelerationStructures(std::shared_ptr<CommandL
     // Store the AS buffers. The rest of the buffers will be released once we exit
     // the function
     m_bottomLevelAS = bottomLevelBuffers.pResult;
+}
+
+ComPtr<ID3D12RootSignature> DDM::RayTracingScene::CreateRayGenSignature()
+{
+    nv_helpers_dx12::RootSignatureGenerator rsc;
+    rsc.AddHeapRangesParameter(
+        { {0 /*u0*/, 1 /*1 descriptor */, 0 /*use the implicit register space 0*/,
+          D3D12_DESCRIPTOR_RANGE_TYPE_UAV /* UAV representing the output buffer*/,
+          0 /*heap slot where the UAV is defined*/},
+         {0 /*t0*/, 1, 0,
+          D3D12_DESCRIPTOR_RANGE_TYPE_SRV /*Top-level acceleration structure*/,
+          1} });
+
+    return rsc.Generate(m_Device.Get(), true);
+}
+
+ComPtr<ID3D12RootSignature> DDM::RayTracingScene::CreateMissSignature()
+{
+    nv_helpers_dx12::RootSignatureGenerator rsc;
+    return rsc.Generate(m_Device.Get(), true);
+}
+
+ComPtr<ID3D12RootSignature> DDM::RayTracingScene::CreateHitSignature()
+{
+    nv_helpers_dx12::RootSignatureGenerator rsc;
+    return rsc.Generate(m_Device.Get(), true);
+}
+
+void DDM::RayTracingScene::CreateRaytracingPipeline()
+{
+    nv_helpers_dx12::RayTracingPipelineGenerator pipeline(m_Device.Get());
+
+    // The pipeline contains the DXIL code of all the shaders potentially executed
+    // during the raytracing process. This section compiles the HLSL code into a
+    // set of DXIL libraries. We chose to separate the code in several libraries
+    // by semantic (ray generation, hit, miss) for clarity. Any code layout can be
+    // used.
+    ComPtr<IDxcBlobEncoding> blobEncoding;
+    ComPtr<IDxcUtils> dxcUtils;
+    ThrowIfFailed(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&dxcUtils)));
+
+    UINT32 codePage = CP_UTF8;
+    ThrowIfFailed(dxcUtils->LoadFile(L"Resources/Shaders/Raygen_RGS.cso", &codePage, &blobEncoding));
+
+    // Cast to IDxcBlob
+    ThrowIfFailed(blobEncoding.As(&m_rayGenLibrary));
+
+    ThrowIfFailed(dxcUtils->LoadFile(L"Resources/Shaders/Miss_MSS.cso", &codePage, &blobEncoding));
+
+    // Cast to IDxcBlob
+    ThrowIfFailed(blobEncoding.As(&m_missLibrary));
+
+    ThrowIfFailed(dxcUtils->LoadFile(L"Resources/Shaders/Hit_CHS.cso", &codePage, &blobEncoding));
+
+    // Cast to IDxcBlob
+    ThrowIfFailed(blobEncoding.As(&m_hitLibrary));
+
+    // In a way similar to DLLs, each library is associated with a number of
+    // exported symbols. This
+     // has to be done explicitly in the lines below. Note that a single library
+    // can contain an arbitrary number of symbols, whose semantic is given in HLSL
+    // using the [shader("xxx")] syntax
+    pipeline.AddLibrary(m_rayGenLibrary.Get(), { L"RayGen" });
+    pipeline.AddLibrary(m_missLibrary.Get(), { L"Miss" });
+    pipeline.AddLibrary(m_hitLibrary.Get(), { L"ClosestHit" });
+
+    // To be used, each DX12 shader needs a root signature defining which
+    // parameters and buffers will be accessed.
+    m_rayGenSignature = CreateRayGenSignature();
+    m_missSignature = CreateMissSignature();
+    m_hitSignature = CreateHitSignature();  
+
+    // 3 different shaders can be invoked to obtain an intersection: an
+    // intersection shader is called
+    // when hitting the bounding box of non-triangular geometry. This is beyond
+    // the scope of this tutorial. An any-hit shader is called on potential
+    // intersections. This shader can, for example, perform alpha-testing and
+    // discard some intersections. Finally, the closest-hit program is invoked on
+    // the intersection point closest to the ray origin. Those 3 shaders are bound
+    // together into a hit group.
+
+    // Note that for triangular geometry the intersection shader is built-in. An
+    // empty any-hit shader is also defined by default, so in our simple case each
+    // hit group contains only the closest hit shader. Note that since the
+    // exported symbols are defined above the shaders can be simply referred to by
+    // name.
+
+    // Hit group for the triangles, with a shader simply interpolating vertex
+    // colors
+    pipeline.AddHitGroup(L"HitGroup", L"ClosestHit");
+
+    // The following section associates the root signature to each shader. Note
+    // that we can explicitly show that some shaders share the same root signature
+    // (eg. Miss and ShadowMiss). Note that the hit shaders are now only referred
+    // to as hit groups, meaning that the underlying intersection, any-hit and
+    // closest-hit shaders share the same root signature.
+    pipeline.AddRootSignatureAssociation(m_rayGenSignature.Get(), { L"RayGen" });
+    pipeline.AddRootSignatureAssociation(m_missSignature.Get(), { L"Miss" });
+    pipeline.AddRootSignatureAssociation(m_hitSignature.Get(), { L"HitGroup" });
+
+    // The payload size defines the maximum size of the data carried by the rays,
+  // ie. the the data
+  // exchanged between shaders, such as the HitInfo structure in the HLSL code.
+  // It is important to keep this value as low as possible as a too high value
+  // would result in unnecessary memory consumption and cache trashing.
+    pipeline.SetMaxPayloadSize(4 * sizeof(float)); // RGB + distance
+
+    // Upon hitting a surface, DXR can provide several attributes to the hit. In
+    // our sample we just use the barycentric coordinates defined by the weights
+    // u,v of the last two vertices of the triangle. The actual barycentrics can
+    // be obtained using float3 barycentrics = float3(1.f-u-v, u, v);
+    pipeline.SetMaxAttributeSize(2 * sizeof(float)); // barycentric coordinates
+
+    // The raytracing process can shoot rays from existing hit points, resulting
+    // in nested TraceRay calls. Our sample code traces only primary rays, which
+    // then requires a trace depth of 1. Note that this recursion depth should be
+    // kept to a minimum for best performance. Path tracing algorithms can be
+    // easily flattened into a simple loop in the ray generation.
+    pipeline.SetMaxRecursionDepth(1);
+
+    // Compile the pipeline for execution on the GPU
+    m_rtStateObject = pipeline.Generate();
+
+    // Cast the state object into a properties object, allowing to later access
+    // the shader pointers by name
+    ThrowIfFailed(
+        m_rtStateObject->QueryInterface(IID_PPV_ARGS(&m_rtStateObjectProps)));
+}
+
+void DDM::RayTracingScene::CreateRaytracingOutputBuffer()
+{
+    D3D12_RESOURCE_DESC resDesc = {};
+    resDesc.DepthOrArraySize = 1;
+    resDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+    // The backbuffer is actually DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, but sRGB
+    // formats cannot be used with UAVs. For accuracy we should convert to sRGB
+    // ourselves in the shader
+    resDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+
+    resDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+    resDesc.Width = GetClientWidth();
+    resDesc.Height = GetClientHeight();
+    resDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+    resDesc.MipLevels = 1;
+    resDesc.SampleDesc.Count = 1;
+    ThrowIfFailed(m_Device->CreateCommittedResource(
+        &nv_helpers_dx12::kDefaultHeapProps, D3D12_HEAP_FLAG_NONE, &resDesc,
+        D3D12_RESOURCE_STATE_COPY_SOURCE, nullptr,
+        IID_PPV_ARGS(&m_outputResource)));
+}
+
+void DDM::RayTracingScene::CreateShaderResourceHeap()
+{
+    // Create a SRV/UAV/CBV descriptor heap. We need 2 entries - 1 UAV for the
+  // raytracing output and 1 SRV for the TLAS
+    m_srvUavHeap = nv_helpers_dx12::CreateDescriptorHeap(
+        m_Device.Get(), 2, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, true);
+
+    // Get a handle to the heap memory on the CPU side, to be able to write the
+    // descriptors directly
+    D3D12_CPU_DESCRIPTOR_HANDLE srvHandle =
+        m_srvUavHeap->GetCPUDescriptorHandleForHeapStart();
+
+    // Create the UAV. Based on the root signature we created it is the first
+    // entry. The Create*View methods write the view information directly into
+    // srvHandle
+    D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+    uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+    m_Device->CreateUnorderedAccessView(m_outputResource.Get(), nullptr, &uavDesc,
+        srvHandle);
+
+    // Add the Top Level AS SRV right after the raytracing output buffer
+    srvHandle.ptr += m_Device->GetDescriptorHandleIncrementSize(
+        D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc;
+    srvDesc.Format = DXGI_FORMAT_UNKNOWN;
+    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE;
+    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    srvDesc.RaytracingAccelerationStructure.Location =
+        m_topLevelASBuffers.pResult->GetGPUVirtualAddress();
+    // Write the acceleration structure view in the heap
+    m_Device->CreateShaderResourceView(nullptr, &srvDesc, srvHandle);
 }

@@ -9,9 +9,7 @@ set(INC_FILES
 	"nv_helpers_dx12/RootSignatureGenerator.h"
 	"nv_helpers_dx12/ShaderBindingTableGenerator.h"
 	"nv_helpers_dx12/TopLevelASGenerator.h"
-	
 	"stdafx.h"
-	
 	"d3dx12.h"
 )
 
