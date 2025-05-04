@@ -26,4 +26,10 @@ namespace Math {
 	}
 }
 
+inline uint64_t Align(uint64_t value, uint64_t alignment)
+{
+	return (value + alignment - 1) & ~(alignment - 1);
+}
+
+
 #endif // !HelpersIncluded

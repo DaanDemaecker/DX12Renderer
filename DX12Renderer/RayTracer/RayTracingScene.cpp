@@ -763,6 +763,7 @@ ComPtr<ID3D12RootSignature> DDM::RayTracingScene::CreateMissSignature()
 ComPtr<ID3D12RootSignature> DDM::RayTracingScene::CreateHitSignature()
 {
     nv_helpers_dx12::RootSignatureGenerator rsc;
+    rsc.AddRootParameter(D3D12_ROOT_PARAMETER_TYPE_SRV);
     return rsc.Generate(m_Device.Get(), true);
 }
 
@@ -775,31 +776,35 @@ void DDM::RayTracingScene::CreateRaytracingPipeline()
     // set of DXIL libraries. We chose to separate the code in several libraries
     // by semantic (ray generation, hit, miss) for clarity. Any code layout can be
     // used.
-    ComPtr<IDxcBlobEncoding> blobEncoding;
+    ComPtr<IDxcBlobEncoding> blobEncodingRayGen;
     ComPtr<IDxcUtils> dxcUtils;
     ThrowIfFailed(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&dxcUtils)));
 
     UINT32 codePage = CP_UTF8;
-    ThrowIfFailed(dxcUtils->LoadFile(L"Resources/Shaders/Raygen_RGS.cso", &codePage, &blobEncoding));
+    ThrowIfFailed(dxcUtils->LoadFile(L"Resources/Shaders/Raygen_RGS.cso", &codePage, &blobEncodingRayGen));
 
     // Cast to IDxcBlob
-    ThrowIfFailed(blobEncoding.As(&m_rayGenLibrary));
+    ThrowIfFailed(blobEncodingRayGen.As(&m_rayGenLibrary));
 
-    ThrowIfFailed(dxcUtils->LoadFile(L"Resources/Shaders/Miss_MSS.cso", &codePage, &blobEncoding));
 
-    // Cast to IDxcBlob
-    ThrowIfFailed(blobEncoding.As(&m_missLibrary));
-
-    ThrowIfFailed(dxcUtils->LoadFile(L"Resources/Shaders/Hit_CHS.cso", &codePage, &blobEncoding));
+    ComPtr<IDxcBlobEncoding> blobEncodingMiss;
+    ThrowIfFailed(dxcUtils->LoadFile(L"Resources/Shaders/Miss_MSS.cso", &codePage, &blobEncodingMiss));
 
     // Cast to IDxcBlob
-    ThrowIfFailed(blobEncoding.As(&m_hitLibrary));
+    ThrowIfFailed(blobEncodingMiss.As(&m_missLibrary));
+
+
+    ComPtr<IDxcBlobEncoding> blobEncodingHit;
+    ThrowIfFailed(dxcUtils->LoadFile(L"Resources/Shaders/Hit_CHS.cso", &codePage, &blobEncodingHit));
+
+    // Cast to IDxcBlob
+    ThrowIfFailed(blobEncodingHit.As(&m_hitLibrary));
 
     // In a way similar to DLLs, each library is associated with a number of
-    // exported symbols. This
+     // exported symbols. This
      // has to be done explicitly in the lines below. Note that a single library
-    // can contain an arbitrary number of symbols, whose semantic is given in HLSL
-    // using the [shader("xxx")] syntax
+     // can contain an arbitrary number of symbols, whose semantic is given in HLSL
+     // using the [shader("xxx")] syntax
     pipeline.AddLibrary(m_rayGenLibrary.Get(), { L"RayGen" });
     pipeline.AddLibrary(m_missLibrary.Get(), { L"Miss" });
     pipeline.AddLibrary(m_hitLibrary.Get(), { L"ClosestHit" });
@@ -808,25 +813,25 @@ void DDM::RayTracingScene::CreateRaytracingPipeline()
     // parameters and buffers will be accessed.
     m_rayGenSignature = CreateRayGenSignature();
     m_missSignature = CreateMissSignature();
-    m_hitSignature = CreateHitSignature();  
+    m_hitSignature = CreateHitSignature();
 
     // 3 different shaders can be invoked to obtain an intersection: an
-    // intersection shader is called
-    // when hitting the bounding box of non-triangular geometry. This is beyond
-    // the scope of this tutorial. An any-hit shader is called on potential
-    // intersections. This shader can, for example, perform alpha-testing and
-    // discard some intersections. Finally, the closest-hit program is invoked on
-    // the intersection point closest to the ray origin. Those 3 shaders are bound
-    // together into a hit group.
+  // intersection shader is called
+  // when hitting the bounding box of non-triangular geometry. This is beyond
+  // the scope of this tutorial. An any-hit shader is called on potential
+  // intersections. This shader can, for example, perform alpha-testing and
+  // discard some intersections. Finally, the closest-hit program is invoked on
+  // the intersection point closest to the ray origin. Those 3 shaders are bound
+  // together into a hit group.
 
-    // Note that for triangular geometry the intersection shader is built-in. An
-    // empty any-hit shader is also defined by default, so in our simple case each
-    // hit group contains only the closest hit shader. Note that since the
-    // exported symbols are defined above the shaders can be simply referred to by
-    // name.
+  // Note that for triangular geometry the intersection shader is built-in. An
+  // empty any-hit shader is also defined by default, so in our simple case each
+  // hit group contains only the closest hit shader. Note that since the
+  // exported symbols are defined above the shaders can be simply referred to by
+  // name.
 
-    // Hit group for the triangles, with a shader simply interpolating vertex
-    // colors
+  // Hit group for the triangles, with a shader simply interpolating vertex
+  // colors
     pipeline.AddHitGroup(L"HitGroup", L"ClosestHit");
 
     // The following section associates the root signature to each shader. Note
@@ -839,10 +844,10 @@ void DDM::RayTracingScene::CreateRaytracingPipeline()
     pipeline.AddRootSignatureAssociation(m_hitSignature.Get(), { L"HitGroup" });
 
     // The payload size defines the maximum size of the data carried by the rays,
-  // ie. the the data
-  // exchanged between shaders, such as the HitInfo structure in the HLSL code.
-  // It is important to keep this value as low as possible as a too high value
-  // would result in unnecessary memory consumption and cache trashing.
+    // ie. the the data
+    // exchanged between shaders, such as the HitInfo structure in the HLSL code.
+    // It is important to keep this value as low as possible as a too high value
+    // would result in unnecessary memory consumption and cache trashing.
     pipeline.SetMaxPayloadSize(4 * sizeof(float)); // RGB + distance
 
     // Upon hitting a surface, DXR can provide several attributes to the hit. In
@@ -892,7 +897,7 @@ void DDM::RayTracingScene::CreateRaytracingOutputBuffer()
 void DDM::RayTracingScene::CreateShaderResourceHeap()
 {
     // Create a SRV/UAV/CBV descriptor heap. We need 2 entries - 1 UAV for the
-  // raytracing output and 1 SRV for the TLAS
+    // raytracing output and 1 SRV for the TLAS
     m_srvUavHeap = nv_helpers_dx12::CreateDescriptorHeap(
         m_Device.Get(), 2, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, true);
 
@@ -926,7 +931,7 @@ void DDM::RayTracingScene::CreateShaderResourceHeap()
 void DDM::RayTracingScene::CreateShaderBindingTable()
 {
     // The SBT helper class collects calls to Add*Program.  If called several
-  // times, the helper must be emptied before re-adding shaders.
+    // times, the helper must be emptied before re-adding shaders.
     m_sbtHelper.Reset();
 
     // The pointer to the beginning of the heap is the only parameter required by
@@ -935,9 +940,9 @@ void DDM::RayTracingScene::CreateShaderBindingTable()
         m_srvUavHeap->GetGPUDescriptorHandleForHeapStart();
 
     // The helper treats both root parameter pointers and heap pointers as void*,
-  // while DX12 uses the
-  // D3D12_GPU_DESCRIPTOR_HANDLE to define heap pointers. The pointer in this
-  // struct is a UINT64, which then has to be reinterpreted as a pointer.
+    // while DX12 uses the
+    // D3D12_GPU_DESCRIPTOR_HANDLE to define heap pointers. The pointer in this
+    // struct is a UINT64, which then has to be reinterpreted as a pointer.
     auto heapPointer = static_cast<UINT64>(srvUavHeapHandle.ptr);
 
     auto heapPointers = std::vector<void*>{ reinterpret_cast<void*>(heapPointer) };
@@ -949,10 +954,10 @@ void DDM::RayTracingScene::CreateShaderBindingTable()
     m_sbtHelper.AddMissProgram(L"Miss", {});
 
     // Adding the triangle hit shader
-    m_sbtHelper.AddHitGroup(L"HitGroup", {});
+    m_sbtHelper.AddHitGroup(L"HitGroup", { (void*)(m_VertexBuffer->GetGPUVirtualAddress()) });
 
     // Compute the size of the SBT given the number of shaders and their
-  // parameters
+    // parameters
     uint32_t sbtSize = m_sbtHelper.ComputeSBTSize();
 
     // Create the SBT on the upload heap. This is required as the helper will use
@@ -971,7 +976,7 @@ void DDM::RayTracingScene::CreateShaderBindingTable()
 
 void DDM::RayTracingScene::PopulateRaytracingCommandlist(std::shared_ptr<CommandList> commandList)
 {
-	auto d3dCommandList = commandList->GetGraphicsCommandList();
+    auto d3dCommandList = commandList->GetGraphicsCommandList();
 
 
     // #DXR
@@ -1005,7 +1010,7 @@ void DDM::RayTracingScene::PopulateRaytracingCommandlist(std::shared_ptr<Command
     // for the shadow rays, so this section has a size of 2*m_sbtEntrySize. We
     // also indicate the stride between the two miss shaders, which is the size
     // of a SBT entry
-    uint32_t missSectionSizeInBytes = 2 * m_sbtHelper.GetMissSectionSize();
+    uint32_t missSectionSizeInBytes = m_sbtHelper.GetMissSectionSize();
     desc.MissShaderTable.StartAddress =
         m_sbtStorage->GetGPUVirtualAddress() + rayGenerationSectionSizeInBytes;
     desc.MissShaderTable.SizeInBytes = missSectionSizeInBytes;
@@ -1053,3 +1058,4 @@ void DDM::RayTracingScene::PopulateRaytracingCommandlist(std::shared_ptr<Command
         D3D12_RESOURCE_STATE_RENDER_TARGET);
     d3dCommandList->ResourceBarrier(1, &transition);
 }
+
